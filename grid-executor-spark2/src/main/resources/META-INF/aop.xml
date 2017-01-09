@@ -1,0 +1,11 @@
+<aspectj>
+
+    <aspects>
+        <!-- declare two existing aspects to the weaver -->
+        <aspect name="com.hindog.grid.spark.shell.SparkShellAspect"/>
+
+    </aspects>
+
+    <weaver/>
+
+</aspectj>

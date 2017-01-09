@@ -1,91 +1,50 @@
-## Grid Executor ##
-
-This project allows for remote-execution of JVM with the only remote dependency being password-less SSH.  
-
-#### Features ####
-
-* Zero-deployment remote JVM execution
-* Implements `ExecutorService` to support submitting `Runnable` and/or `Callable[T]` to the grid nodes.
-* Contains hooks for Scala `Future[T]` to allow for transparent grid execution by wrapping the `GridExecutor` in a Scala `ExecutionContext`.
-* By default, the library will bind remote STDOUT/STDERR to local STDOUT/STDERR and optionally STDIN can be bound as well.
-* Support for remote shells (ie: Spark-shell on a Hadoop gateway box)
-
-#### Import ####
-
-```scala
-import com.hindog.grid._
-```
-
-#### Configuration ####
-
-Configuration is provided though a properties file.  Properties are scoped by `grid.`.  
-
-```
-
-# Configures your remote username (if different from your local username)
-
-grid.remote\:account.<local username>=<remote username>
-
-# Adds JVM arg to ALL remote executions
-grid.jvm\:xx\:permgen=-XX:MaxPermSize=768M
- 
-# Sets GridKit's "remote-runtime:jar-cache" property to determine where to store jars remotely (here we override the default [/tmp/nanocloud] to the user's [~/.jar-cache] on the remote box)
-grid.remote-runtime\:jar-cache=.jar-cache
- 
-# Sets GridKit's "node:config-trace" property to dump ViEngine config on startup
-grid.node\:config-trace=true
- 
-# Adds JVM args specific to remote executions on 'myGrid' nodes
-grid.jvm\:xx\:mx.myGrid=-Xmx8g
-grid.jvm\:exec-command.myGrid=/path/to/java
- 
-# User override to enable remote debug server that client can connect to
-#grid.jvm\:xx\:debug.myGrid.ahiniker=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5004
- 
-# User override to enable remote debug client that will connect to our IDE on startup (replace the IP with your laptop's IP)
-#grid.jvm\:xx\:debug.myGrid.ahiniker=-agentlib:jdwp=transport=dt_socket,server=n,address=10.170.1.45:5004,suspend=y
-```
-
-#### Examples ####
-
-All of the examples below assume the following imports/base trait to provide some default grid definitions.  Also, it references a classpath resource of `grid.properties` that contains any configuration properties as outlined above.
-
-NOTE: the grid definitions refer to `server1.example.com` and `server2.example.com`, these should be replaced with hostnames configured on your network.  Password-less SSH needs to be configured for each host. 
-
-```scala
 package com.hindog.grid.examples
 
 import java.lang.management.ManagementFactory
+import java.util.Properties
 import java.util.concurrent.Callable
 
-import com.hindog.grid.GridConfigurable.Hook
 import com.hindog.grid._
-import scala.concurrent.duration._
-import scala.concurrent._
 
-trait GridExampleApp extends App {
+import scala.concurrent._
+import scala.concurrent.duration._
+
+/*
+ *    __   _         __         
+ *   / /  (_)__  ___/ /__  ____
+ *  / _ \/ / _ \/ _  / _ \/ _  /
+ * /_//_/_/_//_/\_,_/\___/\_, / 
+ *                       /___/
+ */
+
+trait GridExampleApp extends App with Logging {
+
+	val properties = {
+		val props = new Properties()
+		props.load(getClass.getResourceAsStream("/grid.properties"))
+		props
+	}
 
 	def message(msg: String = "Hello!") = s"$msg [thread: " + Thread.currentThread().getId + " within process: " + ManagementFactory.getRuntimeMXBean().getName() + "]"
 
 	val configOneRemote: GridConfig = GridConfig(
-		"myGrid",
-		RemoteNodeConfig("server1.example.com", "server1") // host + alias
+		"gridExample",
+		RemoteNodeConfig("jpc-gateway1.aws.prod.grv", "jpc-gateway1")
 	).withPropertyOverrides(System.getProperties).withPropertyOverrides(properties)
 
 	val configTwoRemote: GridConfig = GridConfig(
-		"myGrid",
-		RemoteNodeConfig("server1.example.com", "server1"), // host + alias
-		RemoteNodeConfig("server2.example.com", "server2") // host + alias
+		"gridExample",
+		RemoteNodeConfig("jpc-gateway1.aws.prod.grv", "jpc-gateway1"),
+		RemoteNodeConfig("jpc-gateway1.aws.prod.grv", "jpc-gateway1")
 	).withPropertyOverrides(System.getProperties).withPropertyOverrides(properties)
 }
 
-```
+/*
+ Scala ExecutionContext example
 
-#### Scala ExecutionContext / Future Example ####
-
-Demonstrates how we can use GridExecutor with Scala's `Future[T]` natively without any GridExecutor specific code.  Parallel collections are not supported.
-
-```scala
+ Demonstrates how we can use GridExecutor with scala.concurrent types (like Future[T], parallel collections, etc)
+ natively without any GridExecutor specific code
+*/
 object GridExecutorScalaFutureExample extends GridExampleApp {
 
 	val remoteNodeConfig = configOneRemote.nodes.head
@@ -118,15 +77,13 @@ object GridExecutorScalaFutureExample extends GridExampleApp {
 	println("total time: " + (System.currentTimeMillis() - start) + "ms")
 	ec.shutdown()
 }
-```
 
-#### Single-use Example ####
 
-Demonstates how to initialize a grid whose life-cycle is scoped to a single task.
-
-NOTE: the overhead in instantiating the cloud will be incurred on each invocation (as part of the future), but once the jars have sync'ed then subsequent invocations will have reduced overhead.
-
-```scala
+/*
+ Single-use grid executor
+ Note that the overhead in instantiating the cloud will be incurred on each invocation (as part of the future),
+ but once the jars have sync'ed then subsequent invocations will have reduced overhead
+*/
 object GridExecutorSingleFutureExample extends GridExampleApp {
 
 	import scala.collection.JavaConverters._
@@ -139,13 +96,11 @@ object GridExecutorSingleFutureExample extends GridExampleApp {
 
 	Await.result(fut, Duration.Inf).foreach(kv => println(kv._1 + "=" + kv._2))
 }
-```
 
-#### Multi-use Example ####
-
-Demonstates how to initialize a grid whose life-cycle is scoped to `thunk`.  Can be used to submit multiple tasks in an ad-hoc fashion.
-
-```scala
+/*
+	Multi-use grid executor whose life-cycle is scoped to 'thunk'.
+	Can be used to submit multiple tasks in an ad-hoc fashion
+*/
 object GridExecutorScopedMultiUseExample extends GridExampleApp {
 
 	// Submit 2 tasks and print their results
@@ -171,13 +126,10 @@ object GridExecutorScopedMultiUseExample extends GridExampleApp {
 	}
 
 }
-```
 
-#### Startup/Shutdown Hooks Example ####
-
-Startup/Shutdown hooks allow arbirary code to be registered for execution as part of each node's startup or shutdown sequence.
-
-```scala
+/*
+	Demonstrates how to use startup/shutdown hooks
+ */
 object GridExecutorScopedWithInitializationExample extends Logging {
 	var globalValue: String = "default value"
 
@@ -187,8 +139,8 @@ object GridExecutorScopedWithInitializationExample extends Logging {
 
 		// below we will add a hook to set the 'globalValue' on the remote box on startup
 		val baseConfig: GridConfig = GridConfig(
-			"myGrid",
-			RemoteNodeConfig("server1.example.com", "server1")
+			"gridExample",
+			RemoteNodeConfig("jpc-gateway1.aws.prod.grv", "jpc-gateway1")
 		).withPropertyOverrides(System.getProperties)
 
 		val config = baseConfig.addStartupHook(new Hook("my init hook") {
@@ -200,7 +152,7 @@ object GridExecutorScopedWithInitializationExample extends Logging {
 			}
 		}).addShutdownHook(new Hook("my shutdown hook") {
 			override def run(): Unit = {
-				info("running delay")
+				logger.info("running delay")
 				Thread.sleep(1000)
 			}
 		})
@@ -216,18 +168,22 @@ object GridExecutorScopedWithInitializationExample extends Logging {
 		println("local globalValue: " + globalValue)
 	}
 }
-```
 
-#### Local Fork Example ####
-
-Demonstrates how to configure a local node that can be used for running code in a forked JVM.
-
-```scala
+/*
+	Demonstrates how to configure a local node that can be used for running code in a forked JVM
+ */
 object GridExecutorLocalForkExample extends App {
 	import scala.concurrent.ExecutionContext.Implicits.global
+	/*
+		localFork(id) is implemented as:
 
+		GridConfig(
+			id,
+			LocalNodeConfig(id)
+		).withPropertyOverrides(Settings.getProperties).withPropertyOverrides(System.getProperties)
+
+	*/
 	println("host jvm: " + ManagementFactory.getRuntimeMXBean.getName)
-
 	val config1: GridConfig = GridConfig.localFork("fork 1").withMaxHeap("20m").withMinHeap("20m")
 	val config2: GridConfig = GridConfig.localFork("fork 2").withMaxHeap("40m").withMinHeap("40m")
 
@@ -246,4 +202,3 @@ object GridExecutorLocalForkExample extends App {
 	Await.result(Future.sequence(Seq(fut1, fut2)), 10 seconds)
 
 }
-```
