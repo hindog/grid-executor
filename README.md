@@ -109,13 +109,11 @@ trait GridExampleApp extends App {
 
 ```
 
-```scala
-/*
- Scala ExecutionContext example
+#### Scala ExecutionContext / Future Example ####
 
- Demonstrates how we can use GridExecutor with scala.concurrent types (like Future[T], parallel collections, etc)
- natively without any GridExecutor specific code
-*/
+Demonstrates how we can use GridExecutor with Scala's `Future[T]` natively without any GridExecutor specific code.  Parallel collections are not supported.
+
+```scala
 object GridExecutorScalaFutureExample extends GridExampleApp {
 
 	val remoteNodeConfig = configOneRemote.nodes.head
@@ -150,12 +148,13 @@ object GridExecutorScalaFutureExample extends GridExampleApp {
 }
 ```
 
+#### Single-use Example ####
+
+Demonstates how to initialize a grid whose life-cycle is scoped to a single task.
+
+NOTE: the overhead in instantiating the cloud will be incurred on each invocation (as part of the future), but once the jars have sync'ed then subsequent invocations will have reduced overhead.
+
 ```scala
-/*
- Single-use grid executor
- Note that the overhead in instantiating the cloud will be incurred on each invocation (as part of the future),
- but once the jars have sync'ed then subsequent invocations will have reduced overhead
-*/
 object GridExecutorSingleFutureExample extends GridExampleApp {
 
 	import scala.collection.JavaConverters._
@@ -168,11 +167,13 @@ object GridExecutorSingleFutureExample extends GridExampleApp {
 
 	Await.result(fut, Duration.Inf).foreach(kv => println(kv._1 + "=" + kv._2))
 }
+```
 
-/*
-	Multi-use grid executor whose life-cycle is scoped to 'thunk'.
-	Can be used to submit multiple tasks in an ad-hoc fashion
-*/
+#### Multi-use Example ####
+
+Demonstates how to initialize a grid whose life-cycle is scoped to `thunk`.  Can be used to submit multiple tasks in an ad-hoc fashion.
+
+```scala
 object GridExecutorScopedMultiUseExample extends GridExampleApp {
 
 	// Submit 2 tasks and print their results
@@ -200,10 +201,11 @@ object GridExecutorScopedMultiUseExample extends GridExampleApp {
 }
 ```
 
+#### Startup/Shutdown Hooks Example ####
+
+Startup/Shutdown hooks allow arbirary code to be registered for execution as part of each node's startup or shutdown sequence.
+
 ```scala
-/*
-	Demonstrates how to use startup/shutdown hooks
- */
 object GridExecutorScopedWithInitializationExample extends Logging {
 	var globalValue: String = "default value"
 
@@ -244,10 +246,11 @@ object GridExecutorScopedWithInitializationExample extends Logging {
 }
 ```
 
+#### Local Fork Example ####
+
+Demonstrates how to configure a local node that can be used for running code in a forked JVM.
+
 ```scala
-/*
-	Demonstrates how to configure a local node that can be used for running code in a forked JVM
- */
 object GridExecutorLocalForkExample extends App {
 	import scala.concurrent.ExecutionContext.Implicits.global
 	/*
