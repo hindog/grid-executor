@@ -33,7 +33,7 @@ object HadoopEnvironment {
     * Fairly portable method for getting the Hadoop classpath in the current environment.
     * It assumes that the 'hadoop' command is available and calls 'hadoop classpath', parses
     * the result, and returns a resolved list of URL's (including wildcard/glob-style patterns,
-    * see [[com.hindog.grid.ClasspathUtils]] for more info).
+    * see `com.hindog.grid.ClasspathUtils` for more info).
     */
   def classpath: Array[URL] = {
     val cpProcess = new ProcessBuilder("hadoop", "classpath").start()
