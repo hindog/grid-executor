@@ -10,8 +10,8 @@ val sparkVersion = "2.1.1"
 lazy val commonSettings = Seq(
 	name := "grid-executor",
 	organization := "com.hindog.grid",
-	scalaVersion := "2.11.8",
-	crossScalaVersions := Seq("2.10.6", "2.11.8"),
+	scalaVersion := "2.11.11",
+	crossScalaVersions := Seq("2.11.11"),
 	releaseCrossBuild := true,
 	releaseVersionBump := sbtrelease.Version.Bump.Bugfix,
 	releasePublishArtifactsAction := PgpKeys.publishSigned.value,
@@ -64,12 +64,12 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings ++ Seq
 		libraryDependencies ++= Seq(
 			"com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
 			"commons-io" % "commons-io" % "2.1",
-			"com.twitter" %% "chill" % "0.8.0",
+			"com.twitter" %% "chill" % "0.9.0",
 			"com.google.guava" % "guava" % "19.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.11",
 			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test",
-			"org.scalatest" %% "scalatest" % "2.2.6" % "test"
+			"org.scalatest" %% "scalatest" % "3.0.3" % "test"
 		)
   )
 )
