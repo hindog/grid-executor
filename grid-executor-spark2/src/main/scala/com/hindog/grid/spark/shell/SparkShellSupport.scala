@@ -2,11 +2,14 @@ package com.hindog.grid.spark.shell
 
 import java.io.File
 
+import com.hindog.grid.ClasspathUtils
+import com.hindog.grid.repo.Resource
 import com.hindog.grid.spark.SparkRunner
-import org.apache.spark.repl.SparkILoop
 
 import scala.collection._
 import scala.tools.nsc.GenericRunnerSettings
+import scala.tools.nsc.interpreter.ILoop
+import scala.util.Properties.{javaVersion, javaVmName, versionString}
 
 /*
  *    __   _         __         
@@ -15,62 +18,86 @@ import scala.tools.nsc.GenericRunnerSettings
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-trait SparkShellSupport extends SparkILoop with SparkRunner {
+trait SparkShellSupport extends ILoop with SparkRunner {
   override def deployMode = "client"
 
-  import org.apache.spark.repl.Main._
+  config("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
 
-  sparkConf.set("spark.ui.enabled", "false")
-
-  override def prompt: String = "spark> "
+  def initCommands(): String = {
+    s"""
+      | @transient val spark = ${getClass.getName.stripSuffix("$")}.createSparkSession
+      | @transient val sc = spark.sparkContext
+      | import spark.implicits._, spark._, org.apache.spark.SparkContext._, org.apache.spark.sql.functions._
+    """.stripMargin('|')
+  }
 
   override def run(args: Array[String]): Unit = {
 
-    val jars = getUserJars.mkString(File.pathSeparator)
+    import org.apache.spark.repl.Main._
+
     val interpArguments = List(
       "-Yrepl-class-based",
       "-Yrepl-outdir", s"${outputDir.getAbsolutePath}",
-      "-classpath", jars,
-      "-usejavacp",
-      "-Dscala.color"
+      "-classpath", Option(conf.get("spark.repl.classpath")).getOrElse(System.getProperty("java.class.path")),
+      "-usejavacp"
     ) ++ args.toList
 
     val settings = new GenericRunnerSettings(err => Console.err.println(err))
     settings.processArguments(interpArguments, true)
 
-    sparkConf.getAll.foreach(kv => conf.set(kv._1, kv._2))
+    configure(conf)
 
     this.process(settings) // Repl starts and goes in loop of R.E.P.L
-    Option(sparkContext).map(_.stop)
+
   }
 
-  override def initializeSpark(): Unit = {}
+  /** Print a welcome message */
+  override def printWelcome() {
+    import org.apache.spark.SPARK_VERSION
 
-  override def printWelcome(): Unit = {
-    super.printWelcome()
-    println()
-    println("// !! shell initialization deferred for IDE entry !! " +
-            "\n// please copy/paste the initialization code below to continue to initialize this shell: ")
-    println()
-    println("\t@transient val sc = org.apache.spark.repl.Main.createSparkSession()")
-    println("\timport sc.implicits._, sc._, org.apache.spark.SparkContext._, org.apache.spark.sql.functions._")
-    println()
+    echo("""Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version %s
+      /_/
+         """.format(SPARK_VERSION))
+    val welcomeMsg = "Using Scala %s (%s, Java %s)".format(
+      versionString, javaVmName, javaVersion)
+    echo(welcomeMsg)
+    echo("Type in expressions to have them evaluated.")
+    echo("Type :help for more information.")
+    echo("")
+    echo(" !! Shell initialization deferred for IDE use")
+    echo(" !! Please copy/paste the following to initialize the shell for IDE use:")
+    echo("")
+    echo(initCommands())
   }
 
-  protected def getUserJars: Seq[String] = {
-    val sparkJars = conf.getOption("spark.jars")
-    if (conf.get("spark.master") == "yarn") {
-      val yarnJars = conf.getOption("spark.yarn.dist.jars")
-      unionFileLists(sparkJars, yarnJars).toSeq
-    } else {
-      sparkJars.map(_.split(",")).map(_.filter(_.nonEmpty)).toSeq.flatten
-    }
+  /** Add repl commands that needs to be blocked. e.g. reset */
+  @transient lazy private val blockedCommands = Set[String]()
+
+  /** Standard commands */
+  @transient lazy val sparkStandardCommands: List[this.LoopCommand] =
+    standardCommands.filter(cmd => !blockedCommands(cmd.name))
+
+  /** Available commands */
+  override def commands: List[LoopCommand] = sparkStandardCommands
+
+//  /**
+//    * We override `loadFiles` because we need to initialize Spark *before* the REPL
+//    * sees any files, so that the Spark context is visible in those files. This is a bit of a
+//    * hack, but there isn't another hook available to us at this point.
+//    */
+//  override def loadFiles(settings: Settings): Unit = {
+//    initCommands()
+//    super.loadFiles(settings)
+//  }
+
+  override def resetCommand(line: String): Unit = {
+    super.resetCommand(line)
+    initCommands()
+    echo("Note that after :reset, state of SparkSession and SparkContext is unchanged.")
   }
 
-  protected def unionFileLists(leftList: Option[String], rightList: Option[String]): Set[String] = {
-    var allFiles = Set[String]()
-    leftList.foreach { value => allFiles ++= value.split(",") }
-    rightList.foreach { value => allFiles ++= value.split(",") }
-    allFiles.filter { _.nonEmpty }
-  }
 }

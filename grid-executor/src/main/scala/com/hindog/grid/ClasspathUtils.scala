@@ -3,6 +3,7 @@ package com.hindog.grid
 import java.io.{File, FileFilter}
 import java.net.{JarURLConnection, URL, URLDecoder}
 
+import scala.collection.JavaConverters._
 import scala.collection._
 
 /*
@@ -14,11 +15,17 @@ import scala.collection._
  */
 object ClasspathUtils {
 
+  def listCurrentClasspath: Array[URL] = try {
+    org.gridkit.vicluster.telecontrol.ClasspathUtils.listCurrentClasspath().asScala.toArray
+  } catch {
+    case _: Exception => Array.empty
+  }
+  
   /**
     * Given a raw classpath string, try to resolve a list of URL's including wild-card and MANIFEST.MF entries
     */
   def explodeClasspath(classpath: String = System.getProperty("java.class.path")): Array[URL] = {
-    classpath.split(":").flatMap(file => {
+    classpath.split(File.pathSeparator).flatMap(file => {
       if (file.endsWith(".jar")) {
         try {
           val url = new URL("jar:file:" + file + "!/META-INF/MANIFEST.MF")

@@ -1,6 +1,7 @@
 package com.hindog.grid.examples
 
 import java.io.File
+import java.net.URI
 
 import com.hindog.grid.hadoop.HDFSRepository
 import com.hindog.grid.spark.shell.SparkShellSupport
@@ -17,8 +18,16 @@ object SparkShellExample extends SparkShellSupport {
 
   override def repository = Some(HDFSRepository())
 
-  override def grid: GridConfig = GridConfig.apply("spark-emr-example",
-    RemoteNodeConfig("10.0.2.25")
+  override def verbose = true
+
+  override def driverVMOptions = "-Dscala.color -Dscala.repl.prompt=\"spark> \""
+
+  config("spark.executor.instances", 3)
+
+  override def assemblyArchive: Option[URI] = Some(new URI("hdfs:/user/spark/share/lib/spark-2.1.0-assembly.zip"))
+
+  override def grid: GridConfig = GridConfig.apply("spark-shell-example",
+    RemoteNodeConfig("10.0.2.221")
       .withSSHAccount("hadoop")
       .withSSHKey(new File("~/.ssh/devKeyPair.pem"))
       .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))
