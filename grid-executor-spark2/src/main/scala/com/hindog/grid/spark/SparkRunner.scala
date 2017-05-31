@@ -40,7 +40,7 @@ trait SparkRunner {
   def config(key: String, value: Long) = _config += key -> value.toString
   def config(key: String, value: Boolean) = _config += key -> value.toString
 
-  def configure: SparkConf => SparkConf = identity
+  def configure: SparkConf => SparkConf = conf => _config.foldLeft(conf)((acc, cur) => conf.set(cur._1, cur._2))
 
   /**
     * Utility method to create managed SparkSession that will:
@@ -51,8 +51,6 @@ trait SparkRunner {
     */
   def createSparkSession: SparkSession = {
     val conf = configure(new SparkConf(true))
-    _config.foreach(kv => conf.set(kv._1, kv._2))
-    configure(conf)
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
     conf.setIfMissing("spark.app.name", getClass.getName.stripSuffix("$"))
