@@ -8,6 +8,7 @@ import java.net.URI
 import com.hindog.grid._
 import com.hindog.grid.repo.{Repository, Resource, SyncRepositoryHook}
 import com.typesafe.scalalogging.Logger
+import org.apache.spark.repl.Main.{conf, outputDir}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 import org.apache.spark.{SparkConf, SparkContext}
@@ -54,7 +55,8 @@ trait SparkRunner {
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
     conf.setIfMissing("spark.app.name", getClass.getName.stripSuffix("$"))
-
+    conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+    
     // SparkContext will detect this configuration and register it with the RpcEnv's
     // file server, setting spark.repl.class.uri to the actual URI for executors to
     // use. This is sort of ugly but since executors are started as part of SparkContext
@@ -107,7 +109,7 @@ trait SparkRunner {
   def master: String = "yarn"
   def proxyUser: String = ""
   def queue: String = ""
-
+  def files: Iterable[URI] = Iterable.empty
   def driverVMOptions: String = ""
   def driverMemory: String = ""
   def driverLibraryPath: String = ""
@@ -143,9 +145,11 @@ trait SparkRunner {
               "/bin/bash", "spark-submit",
               "--master", master,
               "--deploy-mode", deployMode,
-              "--class", mainClass
+              "--class", mainClass,
+              "--jars", jars
             ).ifThen(verbose)(_ :+ "--verbose")
-             .ifThenElse(assemblyArchive.isDefined && master == "yarn")(_ ++ Array("--conf", "spark.yarn.jars=" + jars, "--conf", "spark.yarn.archive=" + assemblyArchive.get.toString))(_ ++ Array("--jars", jars))
+             .ifThen(assemblyArchive.isDefined)(_ ++ Array("--conf", "spark.yarn.archive=" + assemblyArchive.get.toString))
+             .ifThen(files.nonEmpty)(_ ++ Array("--files", files.map(_.toString).mkString(",")))
              .ifThen(driverClasspath.nonEmpty)(_ ++ Array("--driver-class-path", driverClasspath))
              .ifThen(driverMemory.nonEmpty)(_ ++ Array("--driver-memory", driverMemory))
              .ifThen(driverLibraryPath.nonEmpty)(_ ++ Array("--driver-library-path", driverLibraryPath))

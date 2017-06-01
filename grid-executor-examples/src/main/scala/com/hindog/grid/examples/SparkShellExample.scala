@@ -24,7 +24,7 @@ object SparkShellExample extends SparkShellSupport {
 
   config("spark.executor.instances", 3)
 
-  override def assemblyArchive: Option[URI] = Some(new URI("hdfs:/user/spark/share/lib/spark-2.1.0-assembly.zip"))
+  override def assemblyArchive: Option[URI] = Some(new URI("hdfs:/user/spark/share/lib/spark-assembly-2.1.0.zip"))
 
   override def grid: GridConfig = GridConfig.apply("spark-shell-example",
     RemoteNodeConfig("10.0.2.221")
