@@ -27,6 +27,7 @@ import scala.collection.mutable
 trait SparkRunner {
 
   @transient private lazy val _config = mutable.HashMap[String, String]()
+  @transient private lazy val _configMissing = mutable.HashMap[String, String]()
 
   protected var sparkSession: SparkSession = _
   protected var sparkContext: SparkContext = _
@@ -42,8 +43,16 @@ trait SparkRunner {
   def config(key: String, value: Double) = _config += key -> value.toString
   def config(key: String, value: Long) = _config += key -> value.toString
   def config(key: String, value: Boolean) = _config += key -> value.toString
+  
+  def configIfMissing(key: String, value: String) = _configMissing += key -> value
+  def configIfMissing(key: String, value: Double) = _configMissing += key -> value.toString
+  def configIfMissing(key: String, value: Long) = _configMissing += key -> value.toString
+  def configIfMissing(key: String, value: Boolean) = _configMissing += key -> value.toString
 
-  def configure: SparkConf => SparkConf = conf => _config.foldLeft(conf)((acc, cur) => conf.set(cur._1, cur._2))
+  def configure: SparkConf => SparkConf = conf => {
+    _config.foldLeft(conf)((acc, cur) => conf.set(cur._1, cur._2))
+    _configMissing.foldLeft(conf)((acc, cur) => conf.setIfMissing(cur._1, cur._2))
+  }
 
   /**
     * Utility method to create managed SparkSession that will:
