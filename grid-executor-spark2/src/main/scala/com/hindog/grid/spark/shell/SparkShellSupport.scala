@@ -20,10 +20,12 @@ import scala.util.Properties.{javaVersion, javaVmName, versionString}
  *                       /___/
  */
 trait SparkShellSupport extends ILoop with SparkRunner {
+  
   override def deployMode = "client"
 
-  config("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
-  config("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+  conf.set("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
+  conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+  conf.set("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"spark> \"")
   
   def initCommands(): String = {
     s"""
@@ -35,8 +37,6 @@ trait SparkShellSupport extends ILoop with SparkRunner {
 
   override def run(args: Array[String]): Unit = {
 
-    import org.apache.spark.repl.Main._
-
     val interpArguments = List(
       "-Yrepl-class-based",
       "-Yrepl-outdir", s"${outputDir.getAbsolutePath}",
@@ -46,8 +46,6 @@ trait SparkShellSupport extends ILoop with SparkRunner {
 
     val settings = new GenericRunnerSettings(err => Console.err.println(err))
     settings.processArguments(interpArguments, true)
-
-    configure(conf)
 
     this.process(settings) // Repl starts and goes in loop of R.E.P.L
 

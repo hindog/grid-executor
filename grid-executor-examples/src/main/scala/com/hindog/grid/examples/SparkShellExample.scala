@@ -15,14 +15,11 @@ import com.hindog.grid.{GridConfig, RemoteNodeConfig}
  *                       /___/
  */
 object SparkShellExample extends SparkShellSupport {
-
+  override def master: String = "yarn"
   override def repository = Some(HDFSRepository())
-
-  override def verbose = true
-
   override def driverVMOptions = "-Dscala.color -Dscala.repl.prompt=\"spark> \""
 
-  config("spark.executor.instances", 3)
+  conf.set("spark.executor.instances", "3")
 
   override def assemblyArchive: Option[URI] = Some(new URI("hdfs:/user/spark/share/lib/spark-assembly-2.1.0.zip"))
 

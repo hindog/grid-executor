@@ -19,9 +19,9 @@ object HadoopEnvironment {
 
   /**
     * Load Hadoop configuration using detected Hadoop classpath obtained from [[classpath]].  By default, we'll
-    * load `core-site.xml` and `hdfs-site.xml`
+    * load `core-site.xml`, `hdfs-site.xml` and `yarn-site.xml`
     */
-  def loadConfiguration(files: Array[String] = Array("core-site.xml", "hdfs-site.xml")): Configuration = {
+  def loadConfiguration(files: Array[String] = Array("core-site.xml", "hdfs-site.xml", "yarn-site.xml")): Configuration = {
     val hadoopClassloader = new URLClassLoader(classpath)
     val conf = new Configuration(true)
     conf.setClassLoader(hadoopClassloader)
@@ -36,7 +36,7 @@ object HadoopEnvironment {
     * see `com.hindog.grid.ClasspathUtils` for more info).
     */
   def classpath: Array[URL] = {
-    val cpProcess = new ProcessBuilder("hadoop", "classpath").start()
+    val cpProcess = new ProcessBuilder("/bin/bash", "hadoop", "classpath").start()
     val stringWriter = new StringWriter()
 
     cpProcess.waitFor(10, TimeUnit.SECONDS)

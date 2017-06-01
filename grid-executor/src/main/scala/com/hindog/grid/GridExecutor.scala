@@ -198,6 +198,8 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 						}
 					})
 				}}
+
+				latch.await(30L, TimeUnit.SECONDS)
 			}
 		} catch {
 			case NonFatal(ex) => {
@@ -210,7 +212,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	Runtime.getRuntime.addShutdownHook(new Thread() {
 		override def run(): Unit = {
 			if (!isShutdown) {
-				shutdownNow()
+				shutdown()
 			}
 		}
 	})

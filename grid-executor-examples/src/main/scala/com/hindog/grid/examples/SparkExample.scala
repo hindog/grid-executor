@@ -16,6 +16,8 @@ import org.apache.spark.{SparkConf, SparkContext}
  */
 object SparkExample extends SparkRunner {
 
+  override def master: String = "yarn"
+
   override def grid: GridConfig = GridConfig.apply("spark-emr",
                                     RemoteNodeConfig("10.0.2.25")
                                     .withSSHAccount("hadoop")

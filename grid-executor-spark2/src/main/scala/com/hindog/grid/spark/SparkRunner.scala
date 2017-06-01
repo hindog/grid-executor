@@ -14,6 +14,7 @@ import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 /*
  *    __   _         __         
@@ -26,33 +27,23 @@ import scala.collection.mutable
  */
 trait SparkRunner {
 
-  @transient private lazy val _config = mutable.HashMap[String, String]()
-  @transient private lazy val _configMissing = mutable.HashMap[String, String]()
+//  @transient private lazy val _config = mutable.HashMap[String, String]()
+//  @transient private lazy val _configIf = mutable.ListBuffer[SparkConf => Unit]()
+//  @transient private lazy val _configMissing = mutable.HashMap[String, String]()
+
+  @transient protected lazy val conf = configure(new SparkConf(true))
 
   protected var sparkSession: SparkSession = _
   protected var sparkContext: SparkContext = _
 
-  // Register shutdown hook to stop context automatically if this process is stopped
-  Runtime.getRuntime.addShutdownHook(new Thread() {
-    override def run(): Unit = if (sparkContext != null && !sparkContext.isStopped && sparkContext.getConf.getBoolean("spark.yarn.submit.waitAppCompletion", false)) {
-      sparkContext.stop()
-    }
-  })
+//  // Register shutdown hook to stop context automatically if this process is stopped
+//  Runtime.getRuntime.addShutdownHook(new Thread() {
+//    override def run(): Unit = if (sparkContext != null && !sparkContext.isStopped && sparkContext.getConf.getBoolean("spark.yarn.submit.waitAppCompletion", false)) {
+//      sparkContext.stop()
+//    }
+//  })
 
-  def config(key: String, value: String) = _config += key -> value
-  def config(key: String, value: Double) = _config += key -> value.toString
-  def config(key: String, value: Long) = _config += key -> value.toString
-  def config(key: String, value: Boolean) = _config += key -> value.toString
-  
-  def configIfMissing(key: String, value: String) = _configMissing += key -> value
-  def configIfMissing(key: String, value: Double) = _configMissing += key -> value.toString
-  def configIfMissing(key: String, value: Long) = _configMissing += key -> value.toString
-  def configIfMissing(key: String, value: Boolean) = _configMissing += key -> value.toString
-
-  def configure: SparkConf => SparkConf = conf => {
-    _config.foldLeft(conf)((acc, cur) => conf.set(cur._1, cur._2))
-    _configMissing.foldLeft(conf)((acc, cur) => conf.setIfMissing(cur._1, cur._2))
-  }
+  def configure: SparkConf => SparkConf = identity
 
   /**
     * Utility method to create managed SparkSession that will:
@@ -62,8 +53,7 @@ trait SparkRunner {
     *
     */
   def createSparkSession: SparkSession = {
-    val conf = configure(new SparkConf(true))
-
+    
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
     conf.setIfMissing("spark.app.name", getClass.getName.stripSuffix("$"))
 
@@ -115,9 +105,9 @@ trait SparkRunner {
     }
   }
 
-  def deployMode: String = "cluster"
+  def master: String
+  def deployMode: String = "client"
   def verbose: Boolean = false
-  def master: String = "yarn"
   def proxyUser: String = ""
   def queue: String = ""
   def files: Iterable[URI] = Iterable.empty
@@ -167,7 +157,7 @@ trait SparkRunner {
              .ifThen(driverVMOptions.nonEmpty)(_ ++ Array("--driver-java-options", driverVMOptions))
              .ifThen(driverCores.nonEmpty)(_ ++ Array("--driver-cores", driverVMOptions))
              .ifThen(queue.nonEmpty)(_ ++ Array("--queue", queue))
-             .ifThen(_config.nonEmpty)(_ ++ _config.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) :+ System.getProperty("java.class.path").split(File.pathSeparator).head
+             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) :+ System.getProperty("java.class.path").split(File.pathSeparator).head
 
             val process = new ProcessBuilder(args: _*).inheritIO().start()
             process.waitFor()
@@ -182,4 +172,8 @@ trait SparkRunner {
 
   def run(args: Array[String])
 
+  def stop() = if (sparkContext != null && !sparkContext.isStopped) {
+    sparkContext.stop()
+  }
+  
 }
