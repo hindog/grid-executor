@@ -5,6 +5,7 @@ import java.io.File
 import com.hindog.grid.ClasspathUtils
 import com.hindog.grid.repo.Resource
 import com.hindog.grid.spark.SparkRunner
+import org.apache.spark.repl.Main.outputDir
 
 import scala.collection._
 import scala.tools.nsc.GenericRunnerSettings
@@ -22,7 +23,8 @@ trait SparkShellSupport extends ILoop with SparkRunner {
   override def deployMode = "client"
 
   config("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
-
+  config("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+  
   def initCommands(): String = {
     s"""
       | @transient val spark = ${getClass.getName.stripSuffix("$")}.createSparkSession

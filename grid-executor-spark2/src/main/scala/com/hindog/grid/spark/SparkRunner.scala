@@ -33,7 +33,9 @@ trait SparkRunner {
 
   // Register shutdown hook to stop context automatically if this process is stopped
   Runtime.getRuntime.addShutdownHook(new Thread() {
-    override def run(): Unit = if (sparkContext != null && !sparkContext.isStopped) sparkContext.stop()
+    override def run(): Unit = if (sparkContext != null && !sparkContext.isStopped && sparkContext.getConf.getBoolean("spark.yarn.submit.waitAppCompletion", false)) {
+      sparkContext.stop()
+    }
   })
 
   def config(key: String, value: String) = _config += key -> value
@@ -55,7 +57,7 @@ trait SparkRunner {
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
     conf.setIfMissing("spark.app.name", getClass.getName.stripSuffix("$"))
-    conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+
     
     // SparkContext will detect this configuration and register it with the RpcEnv's
     // file server, setting spark.repl.class.uri to the actual URI for executors to
