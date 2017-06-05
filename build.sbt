@@ -68,6 +68,7 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings ++ Seq
 			"com.google.guava" % "guava" % "19.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.11",
+			"com.github.igor-suhorukov" % "mvn-classloader" % "1.8",
 			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test",
 			"org.scalatest" %% "scalatest" % "3.0.3" % "test"
 		)
@@ -83,7 +84,7 @@ lazy val awsS3 = project.in(file("grid-executor-s3")).settings(commonSettings ++
 lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSettings ++ Seq(
     moduleName := "grid-executor-hadoop2",
 		libraryDependencies ++= Seq(
-			"org.apache.hadoop" % "hadoop-client" % "2.7.2"
+			"org.apache.hadoop" % "hadoop-client" % "2.7.2" % "provided"
     )
   )
 ).dependsOn(core)
@@ -93,7 +94,9 @@ lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettin
     libraryDependencies ++= Seq(
 			"org.aspectj" % "aspectjrt" % "1.8.9" % "provided",
 			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
+			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided",
+			"org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+			"org.apache.spark" %% "spark-streaming" % sparkVersion % "provided"
 		)
 	)
 ).dependsOn(core)
@@ -108,9 +111,11 @@ lazy val examples = project.in(file("grid-executor-examples")).dependsOn(core, h
       "org.apache.jclouds.driver" % "jclouds-sshj" % jcloudsVersion,
       "org.apache.jclouds.provider" % "aws-ec2" % jcloudsVersion,
 			"com.amazonaws" % "aws-java-sdk-s3" % "1.11.126",
-			"org.apache.hive" % "hive" % "2.1.1" % "provided",
+			"org.apache.hadoop" % "hadoop-client" % "2.7.2" % "provided",
 			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
+			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided",
+			"org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+			"org.apache.spark" %% "spark-streaming" % sparkVersion % "provided"
 		)
   )
 )

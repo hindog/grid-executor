@@ -4,8 +4,9 @@ import java.io.File
 import java.net.URI
 
 import com.hindog.grid.hadoop.HDFSRepository
-import com.hindog.grid.spark.shell.SparkShellSupport
+import com.hindog.grid.spark.shell.SparkShellRunner
 import com.hindog.grid.{GridConfig, RemoteNodeConfig}
+import org.apache.spark.sql.SparkSession
 
 /*
  *    __   _         __         
@@ -14,17 +15,18 @@ import com.hindog.grid.{GridConfig, RemoteNodeConfig}
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-object SparkShellExample extends SparkShellSupport {
+object SparkShellExample extends SparkShellRunner {
+
   override def master: String = "yarn"
   override def repository = Some(HDFSRepository())
   override def driverVMOptions = "-Dscala.color -Dscala.repl.prompt=\"spark> \""
 
-  conf.set("spark.executor.instances", "3")
+  conf(_.set("spark.executor.instances", "3"))
 
   override def assemblyArchive: Option[URI] = Some(new URI("hdfs:/user/spark/share/lib/spark-assembly-2.1.0.zip"))
 
   override def grid: GridConfig = GridConfig.apply("spark-shell-example",
-    RemoteNodeConfig("10.0.2.221")
+    RemoteNodeConfig("10.0.2.127")
       .withSSHAccount("hadoop")
       .withSSHKey(new File("~/.ssh/devKeyPair.pem"))
       .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))
