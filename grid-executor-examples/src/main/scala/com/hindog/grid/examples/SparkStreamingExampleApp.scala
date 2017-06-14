@@ -1,12 +1,11 @@
 package com.hindog.grid.examples
 
-import java.io.{File, FileOutputStream, PrintWriter}
-import java.nio.file.Files
+import java.io.File
 
-import com.hindog.grid.hadoop.{HDFSRepository, HadoopEnvironment}
+import com.hindog.grid.hadoop.HadoopEnvironment
 import com.hindog.grid.repo.Repository
-import com.hindog.grid.{GridConfig, RemoteNodeConfig}
 import com.hindog.grid.spark.{AbstractSparkRunner, SparkStreamingApp}
+import com.hindog.grid.{GridConfig, RemoteNodeConfig}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.io.{LongWritable, Text}
@@ -16,7 +15,6 @@ import org.apache.spark.streaming.scheduler.{StreamingListener, StreamingListene
 import org.apache.spark.streaming.{Minutes, StreamingContext}
 
 import scala.collection._
-import scala.concurrent.duration._
 
 /**
   * Created by atom-aaron on 6/3/17
@@ -55,21 +53,6 @@ class SparkStreamingExampleApp extends SparkStreamingApp with LazyLogging {
     })
 
     ssc.start()
-
-    // drop a file into streaming location
-//    val lines = 1000000
-//    logger.info(s"Writing $lines lines to /tmp/file/...")
-//    fs.delete(new Path("/tmp/file"), true)
-//    
-//    ssc.sparkContext.parallelize(0 until lines).map(i => s"line $i").saveAsTextFile("/tmp/file/")
-//    val files = fs.listFiles(new Path("/tmp/file/"), false)
-//    while (files.hasNext) {
-//      val file = files.next()
-//      logger.info("File: " + file.getPath)
-//      if (!file.getPath.getName.startsWith("_")) {
-//        fs.rename(file.getPath, new Path("/tmp/streaming/"))
-//      }
-//    }
 
     ssc.awaitTerminationOrTimeout(60000)
   }
