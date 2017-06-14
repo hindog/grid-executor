@@ -252,15 +252,17 @@ object GridExecutorLocalForkExample extends App {
 
 ### TODO / Gotchas ###
 
-##### Spark / Hadoop Dependencies #####
+#### Spark / Hadoop Dependencies ####
 For remote Spark/Hadoop execution, if your `App` class contains method signatures that reference classes from `provided` cluster jars, then the execution will fail unless those libraries are configured for `compile` scope.  Another work-around is to remove all traces of such classes in your `App` class method/field signatures and delegate to another class with your job's logic from within the body of the `run` method (method bodies aren't validated by the JVM on startup).  This will be addressed in an upcoming `2.0` release.
 
-##### Spark Shell #####
-##### Auth Errors #####
+#### Spark Shell ####
+Tutorial, video or animated GIF that shows how to configure the IDE-pimped shell.
+
+#### Auth Errors ####
 If you experience a `JSchAuthCancelException` or similar when running, it is most likely because your SSH key is not of the required minimum length (2048 bits).  Try generating a new key that is at least 2048 bits in length. 
 
-##### TypeSafe Config Support #####
+#### TypeSafe Config Support ####
 Upcoming `2.x` release will have an overhauled configuration process that allows for nested/inherited grid configs.  This will minimize the effort required for configuration while also providing good flexibility for per-grid, per-host, per-job, per-user configuration options, etc.
 
-##### Diagram #####
+#### Diagram ####
 ***Coming Soon***
