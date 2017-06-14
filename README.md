@@ -20,7 +20,7 @@ import com.hindog.grid._
 
 #### Configuration ####
 
-Configuration is provided though a properties file.  Properties are scoped by `grid.`.  
+Configuration is provided via the `GridConfig` builder methods or a properties file (or both).  Properties are scoped by `grid.`.  
 
 ```
 
@@ -258,6 +258,9 @@ For remote Spark/Hadoop execution, if your `App` class contains method signature
 ##### Spark Shell #####
 ##### Auth Errors #####
 If you experience a `JSchAuthCancelException` or similar when running, it is most likely because your SSH key is not of the required minimum length (2048 bits).  Try generating a new key that is at least 2048 bits in length. 
+
+##### TypeSafe Config Support #####
+Upcoming `2.x` release will have an overhauled configuration process that allows for nested/inherited grid configs.  This will minimize the effort required for configuration while also providing good flexibility for per-grid, per-host, per-job, per-user configuration options, etc.
 
 ##### Diagram #####
 ***Coming Soon***
