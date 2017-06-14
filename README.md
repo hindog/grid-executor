@@ -9,10 +9,30 @@ This project allows for remote-execution of JVM code with the only remote depend
 * Contains hooks for Scala `Future[T]` to allow for transparent grid execution by wrapping the `GridExecutor` in a Scala `ExecutionContext`.
 * By default, the library will bind remote STDOUT/STDERR to local STDOUT/STDERR and optionally STDIN can be bound as well.
 * Support for remote Spark/Hadoop execution from IDE for fast, iterative development and feedback (ie: `spark-submit` or `hadoop` on a hadoop gateway box, without manually uploading jars).
-* Support for "IDE-pimped" `spark-shell` that gives you full power of the IDE's completion/import/copy-paste support while interacting with a shell running remotely on the cluster! (See [SparkShellExample.scala](https://github.com/hindog/grid-executor/blob/master/grid-executor-examples/src/main/scala/com/hindog/grid/examples/SparkShellExample.scala) for instructions) 
+* Support for "IDE-pimped" `spark-shell` that gives you full power of the IDE's completion/import/copy-paste support while interacting with a shell running remotely on the cluster! (See [SparkShellExample.scala](https://github.com/hindog/grid-executor/blob/master/grid-executor-examples/src/main/scala/com/hindog/grid/examples/SparkShellExample.scala) for instructions)
+* Can be integrated with [JClouds](https://jclouds.apache.org/) to provision grids on-the-fly 
 * Open-Source, Apache 2.0 License
 
+
 #### Import ####
+
+Using SBT:
+
+```
+libraryDependencies += "com.hindog.grid" %% "grid-executor-core" % "1.1.6"
+```
+
+Using Maven:
+
+```xml
+<dependency>
+    <groupId>com.hindog.grid</groupId>
+    <artifactId>grid-executor-core_2.11</artifactId>
+    <version>1.1.6</version>
+</dependency>
+```
+
+Package Import:
 
 ```scala
 import com.hindog.grid._
@@ -250,19 +270,21 @@ object GridExecutorLocalForkExample extends App {
 }
 ```
 
-### TODO / Gotchas ###
+### Gotchas ###
 
 #### Spark / Hadoop Dependencies ####
 For remote Spark/Hadoop execution, if your `App` class contains method signatures that reference classes from `provided` cluster jars, then the execution will fail unless those libraries are configured for `compile` scope.  Another work-around is to remove all traces of such classes in your `App` class method/field signatures and delegate to another class with your job's logic from within the body of the `run` method (method bodies aren't validated by the JVM on startup).  This will be addressed in an upcoming `2.0` release.
 
-#### Spark Shell ####
-Tutorial, video or animated GIF that shows how to configure the IDE-pimped shell.
-
 #### Auth Errors ####
 If you experience a `JSchAuthCancelException` or similar when running, it is most likely because your SSH key is not of the required minimum length (2048 bits).  Try generating a new key that is at least 2048 bits in length. 
+
+### TODO ###
+
+#### Spark Shell ####
+Tutorial, video or animated GIF that shows how to configure the IDE-pimped shell.
 
 #### TypeSafe Config Support ####
 Upcoming `2.x` release will have an overhauled configuration process that allows for nested/inherited grid configs.  This will minimize the effort required for configuration while also providing good flexibility for per-grid, per-host, per-job, per-user configuration options, etc.
 
-#### Diagram ####
+#### Tutorials / Documentation ####
 ***Coming Soon***
