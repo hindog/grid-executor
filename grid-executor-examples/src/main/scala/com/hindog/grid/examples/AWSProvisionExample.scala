@@ -17,11 +17,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 /*
- *    __   _         __         
- *   / /  (_)__  ___/ /__  ____
- *  / _ \/ / _ \/ _  / _ \/ _  /
- * /_//_/_/_//_/\_,_/\___/\_, / 
- *                       /___/
+ * Demonstrates how you could use JClouds API to automatically provision grid nodes for use with grid-executor
  */
 object AWSProvisionExample extends App with Logging {
 

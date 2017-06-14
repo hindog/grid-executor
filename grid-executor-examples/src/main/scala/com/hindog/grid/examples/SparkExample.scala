@@ -1,7 +1,5 @@
 package com.hindog.grid.examples
 
-import java.io.File
-
 import com.hindog.grid.hadoop.HDFSRepository
 import com.hindog.grid.spark.SparkRunner
 import com.hindog.grid.{GridConfig, RemoteNodeConfig}
@@ -20,8 +18,6 @@ object SparkExample extends SparkRunner {
 
   override def grid: GridConfig = GridConfig.apply("spark-emr",
                                     RemoteNodeConfig("10.0.2.25")
-                                    .withSSHAccount("hadoop")
-                                    .withSSHKey(new File("~/.ssh/devKeyPair.pem"))
                                     .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))
 
 
@@ -35,6 +31,7 @@ object SparkExample extends SparkRunner {
     val rdd = sc.parallelize(0 to 10, 10)
     rdd.foreach(i => println(i))
     sc.stop()
+    
   }
 }
 
