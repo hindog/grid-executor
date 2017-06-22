@@ -27,21 +27,10 @@ import scala.collection.JavaConverters._
  */
 trait SparkRunner {
 
-//  @transient private lazy val _config = mutable.HashMap[String, String]()
-//  @transient private lazy val _configIf = mutable.ListBuffer[SparkConf => Unit]()
-//  @transient private lazy val _configMissing = mutable.HashMap[String, String]()
-
   @transient protected lazy val conf = configure(new SparkConf(true))
 
   protected var sparkSession: SparkSession = _
   protected var sparkContext: SparkContext = _
-
-//  // Register shutdown hook to stop context automatically if this process is stopped
-//  Runtime.getRuntime.addShutdownHook(new Thread() {
-//    override def run(): Unit = if (sparkContext != null && !sparkContext.isStopped && sparkContext.getConf.getBoolean("spark.yarn.submit.waitAppCompletion", false)) {
-//      sparkContext.stop()
-//    }
-//  })
 
   def configure: SparkConf => SparkConf = identity
 
@@ -157,7 +146,10 @@ trait SparkRunner {
              .ifThen(driverVMOptions.nonEmpty)(_ ++ Array("--driver-java-options", driverVMOptions))
              .ifThen(driverCores.nonEmpty)(_ ++ Array("--driver-cores", driverVMOptions))
              .ifThen(queue.nonEmpty)(_ ++ Array("--queue", queue))
-             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) :+ System.getProperty("java.class.path").split(File.pathSeparator).head
+             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
+              Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++
+              args
+              
 
             val process = new ProcessBuilder(args: _*).inheritIO().start()
             process.waitFor()
