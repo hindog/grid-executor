@@ -131,7 +131,7 @@ trait SparkRunner {
             val classpath = jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI)))
             val jars = classpath.map(cp => repo.flatMap(r => Option(r.resolve(cp))).getOrElse(cp.uri)).map(_.toString).mkString(",")
 
-            val args = Array(
+            val submitArgs = Array(
               "/bin/bash", "spark-submit",
               "--master", master,
               "--deploy-mode", deployMode,
@@ -151,7 +151,7 @@ trait SparkRunner {
               args
               
 
-            val process = new ProcessBuilder(args: _*).inheritIO().start()
+            val process = new ProcessBuilder(submitArgs: _*).inheritIO().start()
             process.waitFor()
           }
         })
