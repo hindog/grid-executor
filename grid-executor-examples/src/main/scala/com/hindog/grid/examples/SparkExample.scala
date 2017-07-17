@@ -4,6 +4,10 @@ import com.hindog.grid.hadoop.HDFSRepository
 import com.hindog.grid.spark.SparkRunner
 import com.hindog.grid.{GridConfig, RemoteNodeConfig}
 import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
+
+import java.io.File
+import java.net.InetAddress
 
 /*
  *    __   _         __         
@@ -14,11 +18,13 @@ import org.apache.spark.{SparkConf, SparkContext}
  */
 object SparkExample extends SparkRunner {
 
+  override def sparkSubmit = "spark2-submit"
   override def master: String = "yarn"
+  override def verbose = true
 
-  override def grid: GridConfig = GridConfig.apply("spark-emr",
-                                    RemoteNodeConfig("10.0.2.25")
-                                    .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))
+  override def grid: GridConfig = GridConfig.apply("spark-example",
+                                    RemoteNodeConfig("10.0.1.148")
+                                    .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY")
 
 
   override def repository = Some(HDFSRepository())
@@ -29,7 +35,7 @@ object SparkExample extends SparkRunner {
     val sc = SparkContext.getOrCreate(conf)
 
     val rdd = sc.parallelize(0 to 10, 10)
-    rdd.foreach(i => println(i))
+    rdd.map(i => InetAddress.getLocalHost.getHostName + ": " + i).collect().foreach(println)
     sc.stop()
     
   }

@@ -108,9 +108,9 @@ lazy val examples = project.in(file("grid-executor-examples")).dependsOn(core, h
       "org.apache.jclouds.driver" % "jclouds-sshj" % jcloudsVersion,
       "org.apache.jclouds.provider" % "aws-ec2" % jcloudsVersion,
 			"com.amazonaws" % "aws-java-sdk-s3" % "1.11.126",
-			"org.apache.hive" % "hive" % "2.1.1" % "provided",
-			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
+			"org.apache.hive" % "hive" % "2.1.1",
+			"org.apache.spark" %% "spark-core" % sparkVersion,
+			"org.apache.spark" %% "spark-repl" % sparkVersion
 		)
   )
 )

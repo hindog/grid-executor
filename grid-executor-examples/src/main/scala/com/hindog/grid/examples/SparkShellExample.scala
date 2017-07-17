@@ -42,7 +42,7 @@ object SparkShellExample extends SparkShellSupport {
 
   override def master: String = "yarn"
   override def repository = Some(HDFSRepository())
-  override def driverVMOptions = "-Dscala.color -Dscala.repl.prompt=\"spark> \""
+  override def driverJavaOptions = Some("-Dscala.color -Dscala.repl.prompt=\"spark> \"")
 
   conf.set("spark.executor.instances", "3")
 
