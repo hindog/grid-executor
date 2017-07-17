@@ -24,7 +24,7 @@ object SparkExample extends SparkRunner {
 
   override def grid: GridConfig = GridConfig.apply("spark-example",
                                     RemoteNodeConfig("10.0.1.148")
-                                    .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY")
+                                    .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))
 
 
   override def repository = Some(HDFSRepository())
