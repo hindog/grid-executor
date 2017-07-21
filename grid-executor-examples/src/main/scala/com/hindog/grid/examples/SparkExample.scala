@@ -18,7 +18,6 @@ import java.net.InetAddress
  */
 object SparkExample extends SparkRunner {
 
-  override def sparkSubmit = "spark2-submit"
   override def master: String = "yarn"
   override def verbose = true
 

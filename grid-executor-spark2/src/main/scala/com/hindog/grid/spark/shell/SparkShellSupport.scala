@@ -1,16 +1,17 @@
 package com.hindog.grid.spark.shell
 
 import java.io.File
-
 import com.hindog.grid.ClasspathUtils
 import com.hindog.grid.repo.Resource
-import com.hindog.grid.spark.SparkRunner
+import com.hindog.grid.spark._
 import org.apache.spark.repl.Main.outputDir
 
 import scala.collection._
 import scala.tools.nsc.GenericRunnerSettings
 import scala.tools.nsc.interpreter.ILoop
 import scala.util.Properties.{javaVersion, javaVmName, versionString}
+
+import java.net.InetAddress
 
 /*
  *    __   _         __         
@@ -25,7 +26,8 @@ trait SparkShellSupport extends SparkRunner {
 
   conf.set("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
   conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
-  conf.set("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"spark> \"")
+  
+  conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"spark> \"")
 
   def initCommands(): String = {
     s"""
@@ -69,6 +71,8 @@ trait SparkShellSupport extends SparkRunner {
       echo(welcomeMsg)
       echo("Type in expressions to have them evaluated.")
       echo("Type :help for more information.")
+      echo("")
+      echo(s" Host: ${InetAddress.getLocalHost.getHostName}")
       echo("")
       echo(" !! Shell initialization deferred for IDE use")
       echo(" !! Please copy/paste the following to initialize the shell for IDE use:")

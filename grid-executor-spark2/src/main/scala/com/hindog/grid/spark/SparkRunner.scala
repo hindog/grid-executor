@@ -23,10 +23,7 @@ import java.net.URI
  */
 abstract class SparkRunner { parent =>
 
-  @transient protected lazy val conf = configure(new SparkConf(true))
-
-  protected var spark: SparkSession = _
-  protected var sc: SparkContext = _
+  @transient protected lazy val conf: SparkConf = configure(new SparkConf(true))
 
   def configure: SparkConf => SparkConf = identity
 
@@ -74,7 +71,6 @@ abstract class SparkRunner { parent =>
       // default is 'in-memory'. So the sparkSession will use in-memory catalog.
       spark = builder.getOrCreate()
     }
-    sc = spark.sparkContext
 
     spark
   }
@@ -173,8 +169,4 @@ abstract class SparkRunner { parent =>
 
   def run(args: Array[String])
 
-  def stop() = if (sc != null && !sc.isStopped) {
-    sc.stop()
-  }
-  
 }
