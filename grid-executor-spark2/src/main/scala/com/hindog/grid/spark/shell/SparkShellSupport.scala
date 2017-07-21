@@ -36,7 +36,7 @@ trait SparkShellSupport extends SparkRunner {
   }
 
   System.setProperty("scala.repl.prompt", prompt)
-  conf.append("spark.driver.extraJavaOptions", s"-Dscala.repl.prompt=\"$prompt\"")
+  conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"" + prompt + "\"")
 
   def initCommands(): String = {
     s"""
