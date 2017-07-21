@@ -59,20 +59,19 @@ abstract class SparkRunner { parent =>
         // In the case that the property is not set at all, builder's config
         // does not have this value set to 'hive' yet. The original default
         // behavior is that when there are hive classes, we use hive catalog.
-        spark = builder.enableHiveSupport().getOrCreate()
+        builder.enableHiveSupport().getOrCreate()
       } else {
         // Need to change it back to 'in-memory' if no hive classes are found
         // in the case that the property is set to hive in spark-defaults.conf
         builder.config(CATALOG_IMPLEMENTATION.key, "in-memory")
-        spark = builder.getOrCreate()
+        builder.getOrCreate()
       }
     } else {
       // In the case that the property is set but not to 'hive', the internal
       // default is 'in-memory'. So the sparkSession will use in-memory catalog.
-      spark = builder.getOrCreate()
+      builder.getOrCreate()
     }
 
-    spark
   }
 
   protected def hiveClassesArePresent: Boolean = {
