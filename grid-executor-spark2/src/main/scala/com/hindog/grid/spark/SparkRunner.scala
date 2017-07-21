@@ -127,7 +127,7 @@ abstract class SparkRunner { parent =>
         }
 
         def conf[T](f: SparkRunner => Option[T], conf: String): Array[String] = {
-          f(SparkRunner.this).map(o => arr ++ Array("--conf", conf + "=" + o.toString.ifThen(_.contains(' '))(v => s"'$v'"))).getOrElse(arr)
+          f(SparkRunner.this).map(o => arr ++ Array("--conf", conf + "=" + o.toString)).getOrElse(arr)
         }
       }
 
@@ -151,7 +151,7 @@ abstract class SparkRunner { parent =>
              .arg(_.driverCores, "--driver-core")
              .arg(_.queue, "--queue")
              .conf(_.assemblyArchive, "spark.yarn.archive")
-             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2.ifThen(_.contains(' '))(v => s"'$v'")}"))) ++
+             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
               Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++
               args
 
