@@ -24,10 +24,19 @@ trait SparkShellSupport extends SparkRunner {
   
   override def deployMode = "client"
 
+  def shellColor: Boolean = false
+  def prompt: String = "spark> "
+
   conf.set("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
   conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
-  
-  conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"spark> \"")
+
+  if (shellColor) {
+    System.setProperty("scala.color", "true")
+    conf.append("spark.driver.extraJavaOptions", s"-Dscala.color=true")
+  }
+
+  System.setProperty("scala.repl.prompt", prompt)
+  conf.append("spark.driver.extraJavaOptions", s"-Dscala.repl.prompt=\"$prompt\"")
 
   def initCommands(): String = {
     s"""
