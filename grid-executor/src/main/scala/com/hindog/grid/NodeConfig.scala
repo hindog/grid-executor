@@ -34,7 +34,7 @@ case class RemoteNodeConfig private (hostname: String, name: String, config: ViN
 		RemoteNode.at(node).useSimpleRemoting()
 		RemoteNode.at(node).setRemoteHost(hostname)
 		RemoteNode.at(node).setRemoteJarCachePath(jarCache.toString)
-		javaCommand.foreach(j => RemoteNode.at(node).setRemoteJavaExec(javaCommand.toString))
+		javaCommand.foreach(j => RemoteNode.at(node).setRemoteJavaExec(j.toString))
 		sshAccount.foreach(a => RemoteNode.at(node).setRemoteAccount(a))
 		sshKey.foreach(f => RemoteNode.at(node).setSshPrivateKey(f.toString))
 		node
