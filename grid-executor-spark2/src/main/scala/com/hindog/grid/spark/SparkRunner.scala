@@ -11,6 +11,7 @@ import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.URI
+import java.util.concurrent.Callable
 
 /*
  *    __   _         __         
@@ -37,7 +38,7 @@ abstract class SparkRunner { parent =>
   def createSparkSession: SparkSession = {
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
-    conf.setIfMissing("spark.app.name", getClass.getName.stripSuffix("$"))
+    conf.setIfMissing("spark.app.name", appName)
 
 
     // SparkContext will detect this configuration and register it with the RpcEnv's
@@ -96,6 +97,7 @@ abstract class SparkRunner { parent =>
   }
 
   def mainClass: String = getClass.getName.stripSuffix("$")
+  def appName: String = getClass.getName.stripSuffix("$")
   def deployMode: String = "client"
   def verbose: Boolean = false
   def proxyUser: Option[String] = None
@@ -110,6 +112,38 @@ abstract class SparkRunner { parent =>
   def jarFilter: Iterable[Resource] => Iterable[Resource] = identity
   def assemblyArchive: Option[URI] = None
   def repository: Option[Repository] = None
+
+  def submitCommand(args: Array[String]): Array[String] = {
+
+    implicit class Args(arr: Array[String]) {
+      def arg[T](f: SparkRunner => Option[T], flag: String): Array[String] = {
+        f(SparkRunner.this).map(o => arr ++ Array(flag, o.toString)).getOrElse(arr)
+      }
+
+      def conf[T](f: SparkRunner => Option[T], conf: String): Array[String] = {
+        f(SparkRunner.this).map(o => arr ++ Array("--conf", conf + "=" + o.toString)).getOrElse(arr)
+      }
+    }
+
+    Array(
+      "/bin/bash", sparkSubmit,
+      "--master", master,
+      "--deploy-mode", deployMode,
+      "--class", mainClass,
+      "--jars", jars.mkString(",")
+    ).ifThen(verbose)(_ :+ "--verbose")
+      .arg(f => Option(f.files).filter(_.nonEmpty).map(_.map(_.toString).mkString(",")), "--files")
+      .arg(_.driverClasspath, "--driver-class-path")
+      .arg(_.driverMemory, "--driver-memory")
+      .arg(_.driverLibraryPath, "--driver-library-path")
+      .arg(_.driverJavaOptions, "--driver-java-options")
+      .arg(_.driverCores, "--driver-core")
+      .arg(_.queue, "--queue")
+      .conf(_.assemblyArchive, "spark.yarn.archive")
+      .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
+      Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++
+      args
+  }
 
   def main(args: Array[String]): Unit = {
     /*
@@ -131,38 +165,24 @@ abstract class SparkRunner { parent =>
         }
       }
 
-      GridExecutor.withInstance(gridConfig) { executor =>
-        val task = executor.submit(new Runnable with Serializable {
-          override def run(): Unit = {
+      val retCode = GridExecutor.withInstance(gridConfig) { executor =>
+        val task = executor.submit(new Callable[Int] with Serializable {
+          override def call(): Int = {
             Logger(mainClass).info(s"Running $mainClass remotely under process: ${ManagementFactory.getRuntimeMXBean.getName}")
-
-            val submitArgs = Array(
-              "/bin/bash", sparkSubmit,
-              "--master", master,
-              "--deploy-mode", deployMode,
-              "--class", mainClass,
-              "--jars", jars.mkString(",")
-            ).ifThen(verbose)(_ :+ "--verbose")
-             .arg(f => Option(f.files).filter(_.nonEmpty).map(_.map(_.toString).mkString(",")), "--files")
-             .arg(_.driverClasspath, "--driver-class-path")
-             .arg(_.driverMemory, "--driver-memory")
-             .arg(_.driverLibraryPath, "--driver-library-path")
-             .arg(_.driverJavaOptions, "--driver-java-options")
-             .arg(_.driverCores, "--driver-core")
-             .arg(_.queue, "--queue")
-             .conf(_.assemblyArchive, "spark.yarn.archive")
-             .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
-              Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++
-              args
-
-            val process = new ProcessBuilder(submitArgs: _*).inheritIO().start()
+            val process = new ProcessBuilder(submitCommand(args): _*).inheritIO().start()
             process.waitFor()
           }
         })
-        task.get()
-        // pause a bit to wait for StdOut/StdErr streams
-        Thread.sleep(1000)
+
+        try {
+          task.get()
+        } finally {
+          // pause a bit to wait for StdOut/StdErr streams
+          Thread.sleep(1000)
+        }
       }
+      
+      System.exit(retCode)
     }
   }
 
