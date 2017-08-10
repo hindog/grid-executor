@@ -137,7 +137,7 @@ abstract class SparkRunner { parent =>
       .arg(_.driverMemory, "--driver-memory")
       .arg(_.driverLibraryPath, "--driver-library-path")
       .arg(_.driverJavaOptions, "--driver-java-options")
-      .arg(_.driverCores, "--driver-core")
+      .arg(_.driverCores, "--driver-cores")
       .arg(_.queue, "--queue")
       .conf(_.assemblyArchive, "spark.yarn.archive")
       .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
