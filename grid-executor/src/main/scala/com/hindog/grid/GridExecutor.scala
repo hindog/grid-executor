@@ -209,13 +209,17 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 		}
 	}
 
-	Runtime.getRuntime.addShutdownHook(new Thread() {
-		override def run(): Unit = {
-			if (!isShutdown) {
-				shutdown()
+	try {
+		Runtime.getRuntime.addShutdownHook(new Thread() {
+			override def run(): Unit = {
+				if (!isShutdown) {
+					shutdown()
+				}
 			}
-		}
-	})
+		})
+	} catch {
+		case ex: Exception => logger.warn("Unable to register shutdown hook for grid! JVM already shutting down?")
+	}
 
 }
 
