@@ -75,9 +75,7 @@ abstract class SparkRunner { parent =>
   }
 
   protected def hiveClassesArePresent: Boolean = {
-    val HIVE_SESSION_STATE_CLASS_NAME = "org.apache.spark.sql.hive.HiveSessionState"
     try {
-      Class.forName(HIVE_SESSION_STATE_CLASS_NAME)
       Class.forName("org.apache.hadoop.hive.conf.HiveConf")
       true
     } catch {
