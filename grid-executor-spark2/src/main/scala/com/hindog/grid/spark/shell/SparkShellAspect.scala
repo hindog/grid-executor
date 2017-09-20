@@ -18,10 +18,13 @@ import scala.tools.nsc.interpreter.ILoop
 
 class InterceptedILoop(in: Option[BufferedReader], out: PrintWriter) extends ILoop(in, out) {
   @scala.deprecated("Use `process` instead", "October 4, 2016")
-  override def main(settings: Settings): Unit = {
+  override def main(settings: Settings): Unit = process(settings)
+
+  override def process(settings: Settings) = {
     val mainClass = Class.forName(Option(System.getProperty("shell.main.class")).getOrElse(throw new RuntimeException("'shell.main.class' not set.  Please add a -Dshell.main.class=<main class> to your VM options")))
     val instance = mainClass.getField("MODULE$").get(null).asInstanceOf[{ def main(args: Array[String]) }]
     instance.main(Array.empty)
+    true
   }
 }
 
