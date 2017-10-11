@@ -24,9 +24,7 @@ import java.util.concurrent.Callable
  */
 abstract class SparkRunner { parent =>
 
-  @transient lazy val conf: SparkConf = configure(new SparkConf(true))
-
-  def configure: SparkConf => SparkConf = identity
+  @transient lazy val conf: SparkConf = new SparkConf(true)
 
   /**
     * Utility method to create managed SparkSession that will:
@@ -38,7 +36,6 @@ abstract class SparkRunner { parent =>
   def createSparkSession: SparkSession = {
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
-    conf.setIfMissing("spark.app.name", appName.getOrElse(getClass.getName.stripSuffix("$")))
 
     // SparkContext will detect this configuration and register it with the RpcEnv's
     // file server, setting spark.repl.class.uri to the actual URI for executors to
@@ -94,7 +91,6 @@ abstract class SparkRunner { parent =>
   }
 
   def mainClass: String = getClass.getName.stripSuffix("$")
-  def appName: Option[String] = None
   def deployMode: String = "client"
   def verbose: Boolean = false
   def proxyUser: Option[String] = None
@@ -136,7 +132,6 @@ abstract class SparkRunner { parent =>
       .arg(_.driverJavaOptions, "--driver-java-options")
       .arg(_.driverCores, "--driver-cores")
       .arg(_.queue, "--queue")
-      .conf(_.appName, "spark.app.name")
       .conf(_.assemblyArchive, "spark.yarn.archive")
       .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
       Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++

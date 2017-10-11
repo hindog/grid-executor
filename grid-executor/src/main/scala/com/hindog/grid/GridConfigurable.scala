@@ -68,8 +68,10 @@ trait GridConfigurable {
 
 	def withInheritedEnv(keys: String*): Repr = apply(node => keys.foreach(k => JvmProps.setEnv(node, k, System.getenv(k))))
 	def withInheritedEnv: Repr = apply(node => System.getenv().keySet().asScala.foreach(k => JvmProps.setEnv(node, k, System.getenv(k))))
+	def withInheritedEnvFilter(f: String => Boolean): Repr = apply(node => System.getenv().keySet().asScala.filter(f).foreach(k => JvmProps.setEnv(node, k, System.getenv(k))))
 	def withInheritedSystemProperties(keys: String*) = apply(node => keys.foreach(k => node.setProp(k, System.getProperty(k))))
 	def withInheritedSystemProperties = apply(node => System.getProperties.propertyNames().asScala.map(_.toString).foreach(k => node.setProp(k, System.getProperty(k))))
+	def withInheritedSystemPropertiesFilter(f: String => Boolean) = apply(node => System.getProperties.propertyNames().asScala.map(_.toString).filter(f).foreach(k => node.setProp(k, System.getProperty(k))))
 
 	def withNodeTraceEnabled = apply(_.setProp(ViConf.NODE_TRACE, "true"))
 
