@@ -18,8 +18,8 @@ import java.net.InetAddress
  */
 object SparkExample extends SparkRunner {
 
-  override def master: String = "yarn"
-  override def verbose = true
+  conf.set("spark.master", "yarn")
+  conf.set("spark.submit.verbose", "true")
 
   override def grid: GridConfig = GridConfig.apply("spark-example",
                                     RemoteNodeConfig("10.0.1.148")

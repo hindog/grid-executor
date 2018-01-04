@@ -22,12 +22,11 @@ import java.net.InetAddress
  */
 trait SparkShellSupport extends SparkRunner {
   
-  override def deployMode = "client"
-
   def shellColor: Boolean = false
   def prompt: String = "spark> "
 
-  conf.set("spark.repl.classpath", jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
+  conf.set("spark.submit.deployMode", "client")
+  conf.set("spark.repl.classpath", clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
   conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
 
   if (shellColor) {

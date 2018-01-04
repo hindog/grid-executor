@@ -40,12 +40,12 @@ import com.hindog.grid.{GridConfig, RemoteNodeConfig}
  */
 object SparkShellExample extends SparkShellSupport {
 
-  override def master: String = "yarn"
-  override def repository = Some(HDFSRepository())
-  override def driverJavaOptions = Some("-Dscala.color -Dscala.repl.prompt=\"spark> \"")
-
+  conf.set("spark.master", "yarn")
+  conf.set("spark.driver.extraJavaOptions", "-Dscala.color -Dscala.repl.prompt=\"spark> \"")
   conf.set("spark.executor.instances", "3")
 
+  override def repository = Some(HDFSRepository())
+  
   override def grid: GridConfig = GridConfig.apply("spark-shell-example",
     RemoteNodeConfig("10.0.0.25")
       .withInheritedEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY", "AWS_SECRET_KEY", "AWS_SECRET_ACCESS_KEY"))

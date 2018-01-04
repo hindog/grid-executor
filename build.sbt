@@ -12,6 +12,9 @@ lazy val commonSettings = Seq(
 	organization := "com.hindog.grid",
 	scalaVersion := "2.11.11",
 	crossScalaVersions := Seq("2.11.11"),
+	libraryDependencies ++= Seq(
+		"org.scalatest" %% "scalatest" % "3.0.3" % "test"
+	),
 	releaseCrossBuild := true,
 	releaseVersionBump := sbtrelease.Version.Bump.Bugfix,
 	releasePublishArtifactsAction := PgpKeys.publishSigned.value,
@@ -59,7 +62,7 @@ lazy val root = Project(
 	base = file(".")
 ).aggregate(core, awsS3, hadoop2, spark2, examples).settings(commonSettings)
 
-lazy val core = project.in(file("grid-executor")).settings(commonSettings ++ Seq(
+lazy val core = project.in(file("grid-executor")).settings(commonSettings).settings(
     moduleName := "grid-executor-core",
 		libraryDependencies ++= Seq(
 			"com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
@@ -68,37 +71,32 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings ++ Seq
 			"com.google.guava" % "guava" % "19.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.11",
-			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test",
-			"org.scalatest" %% "scalatest" % "3.0.3" % "test"
+			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test"
 		)
   )
-)
 
-lazy val awsS3 = project.in(file("grid-executor-s3")).settings(commonSettings ++ Seq(
+lazy val awsS3 = project.in(file("grid-executor-s3")).settings(commonSettings).settings(
     moduleName := "grid-executor-s3",
     libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.11.126"
-  )
-).dependsOn(core)
+  ).dependsOn(core)
 
-lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSettings ++ Seq(
+lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSettings).settings(
     moduleName := "grid-executor-hadoop2",
 		libraryDependencies ++= Seq(
 			"org.apache.hadoop" % "hadoop-client" % "2.7.2"
     )
-  )
-).dependsOn(core)
+	).dependsOn(core)
 
-lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettings ++ Seq(
+lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettings).settings(
     moduleName := "grid-executor-spark2",
     libraryDependencies ++= Seq(
 			"org.aspectj" % "aspectjrt" % "1.8.9" % "provided",
 			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
 			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
 		)
-	)
-).dependsOn(core)
+	).dependsOn(core)
 
-lazy val examples = project.in(file("grid-executor-examples")).dependsOn(core, hadoop2, awsS3, spark2).settings(commonSettings ++ Seq(
+lazy val examples = project.in(file("grid-executor-examples")).settings(commonSettings).settings(
     moduleName := "grid-executor-examples",
     libraryDependencies ++= Seq(
       "org.slf4j" % "slf4j-log4j12" % "1.7.25",
@@ -112,5 +110,4 @@ lazy val examples = project.in(file("grid-executor-examples")).dependsOn(core, h
 			"org.apache.spark" %% "spark-core" % sparkVersion,
 			"org.apache.spark" %% "spark-repl" % sparkVersion
 		)
-  )
-)
+  ).dependsOn(core, hadoop2, awsS3, spark2)

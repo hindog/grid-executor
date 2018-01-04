@@ -1,16 +1,17 @@
 package com.hindog.grid
 package spark
 
-import com.hindog.grid._
 import com.hindog.grid.repo._
+import com.hindog.grid.spark.SparkRunner.{ArgumentBuilder, SparkArgument}
 import com.typesafe.scalalogging.Logger
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 
+import scala.collection._
+
 import java.io.File
 import java.lang.management.ManagementFactory
-import java.net.URI
 import java.util.concurrent.Callable
 
 /*
@@ -23,6 +24,38 @@ import java.util.concurrent.Callable
  * TODO: forking for embedded use
  */
 abstract class SparkRunner { parent =>
+  
+  import SparkRunner._
+  
+  @transient private val arguments = mutable.ListBuffer[ArgumentBuilder[this.type]]()
+
+  def arg(submitArg: String, confKey: String): Unit = arguments += SparkArgument[this.type](Option(submitArg), Option(confKey), None, _.conf.getOption(confKey))
+  def arg(submitArg: String, accessor: SparkRunner => Option[String]): Unit = arguments += SparkArgument[this.type](Option(submitArg), None, None, accessor)
+  def flag(submitFlag: String, confKey: String): Unit = arguments += SparkArgument[this.type](None, Option(confKey), Option(submitFlag), _.conf.getOption(confKey).map(_.toLowerCase))
+  def flag(submitFlag: String): Unit = arguments += SparkArgument[this.type](None, None, Option(submitFlag), _ => Some("true"))
+  def flag(submitFlag: String, accessor: SparkRunner => Boolean): Unit = arguments += SparkArgument[this.type](None, None, Option(submitFlag), runner => if (accessor(runner)) Some("true") else None)
+  
+  flag("--verbose",             "spark.submit.verbose")
+  arg("--class",                v => Option(v.mainClass))
+  arg("--master",               "spark.master")
+  arg("--deploy-mode",          "spark.submit.deployMode")
+  arg("--name",                 "spark.app.name")
+  arg("--jars",                 "spark.jars")
+  arg("--packages",             "spark.jars.packages")
+  arg("--exclude-packages",     "spark.jars.excludes")
+  arg("--files",                "spark.files")
+  arg("--driver-memory",        "spark.driver.memory")
+  arg("--driver-java-options",  "spark.driver.extraJavaOptions")
+  arg("--driver-library-path",  "spark.driver.extraLibraryPath")
+  arg("--driver-class-path",    "spark.driver.extraClassPath")
+  arg("--executor-memory",      "spark.executor.memory")
+  arg("--driver-cores",         "spark.driver.cores")
+  arg("--queue",                "spark.yarn.queue")
+  arg("--num-executors",        "spark.executor.instances")
+  arg("--archives",             "spark.yarn.dist.archives")
+  arg("--principal",            "spark.yarn.principal")
+  arg("--keytab",               "spark.yarn.keytab")
+  flag("--supervise",           "spark.driver.supervise")
 
   @transient lazy val conf: SparkConf = new SparkConf(true)
 
@@ -80,62 +113,26 @@ abstract class SparkRunner { parent =>
     }
   }
 
-  def sparkSubmit: String = "spark-submit"
-  def master: String
   def grid: GridConfig
-
-  def jars: Array[String] = {
-    val repo = repository
-    val classpath = jarFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI)))
-    classpath.map(cp => repo.flatMap(r => Option(r.resolve(cp))).getOrElse(cp.uri)).map(_.toString).toArray
-  }
-
-  def mainClass: String = getClass.getName.stripSuffix("$")
-  def deployMode: String = "client"
-  def verbose: Boolean = false
-  def proxyUser: Option[String] = None
-  def queue: Option[String] = None
-  def files: Iterable[URI] = Iterable.empty
-  def driverJavaOptions: Option[String] = None
-  def driverMemory: Option[String] = None
-  def driverLibraryPath: Option[String] = None
-  def driverClasspath: Option[String] = None
-  def driverCores: Option[Int] = None
-
-  def jarFilter: Iterable[Resource] => Iterable[Resource] = identity
-  def assemblyArchive: Option[URI] = None
   def repository: Option[Repository] = None
 
+  def mainClass: String = getClass.getName.stripSuffix("$")
+  def applicationJar: String = System.getProperty("java.class.path").split(File.pathSeparator).head
+  
+  def clusterClasspath: Iterable[String] = {
+    val repo = repository
+    val classpath = clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI)))
+    classpath.map(cp => repo.flatMap(r => Option(r.resolve(cp))).getOrElse(cp.uri)).map(_.toString)
+  }
+  def clusterClasspathFilter: Iterable[Resource] => Iterable[Resource] = identity
+
+  def shellCommand: Iterable[String] = Seq("/bin/bash", "spark-submit")
   def submitCommand(args: Array[String]): Array[String] = {
-
-    implicit class Args(arr: Array[String]) {
-      def arg[T](f: SparkRunner => Option[T], flag: String): Array[String] = {
-        f(SparkRunner.this).map(o => arr ++ Array(flag, o.toString)).getOrElse(arr)
-      }
-
-      def conf[T](f: SparkRunner => Option[T], conf: String): Array[String] = {
-        f(SparkRunner.this).map(o => arr ++ Array("--conf", conf + "=" + o.toString)).getOrElse(arr)
-      }
+    if (clusterClasspath.nonEmpty && !conf.contains("spark.jars") && !conf.contains("spark.yarn.jars")) {
+      conf.set("spark.jars", clusterClasspath.mkString(","))
     }
 
-    Array(
-      "/bin/bash", sparkSubmit,
-      "--master", master,
-      "--deploy-mode", deployMode,
-      "--class", mainClass,
-      "--jars", jars.mkString(",")
-    ).ifThen(verbose)(_ :+ "--verbose")
-      .arg(f => Option(f.files).filter(_.nonEmpty).map(_.map(_.toString).mkString(",")), "--files")
-      .arg(_.driverClasspath, "--driver-class-path")
-      .arg(_.driverMemory, "--driver-memory")
-      .arg(_.driverLibraryPath, "--driver-library-path")
-      .arg(_.driverJavaOptions, "--driver-java-options")
-      .arg(_.driverCores, "--driver-cores")
-      .arg(_.queue, "--queue")
-      .conf(_.assemblyArchive, "spark.yarn.archive")
-      .ifThen(conf.getAll.nonEmpty)(_ ++ conf.getAll.flatMap(kv => Array("--conf", s"${kv._1}=${kv._2}"))) ++
-      Array(System.getProperty("java.class.path").split(File.pathSeparator).head) ++
-      args
+    (shellCommand ++ arguments.flatMap(_.apply(this)) ++ Seq(applicationJar)).toArray ++ args
   }
 
   def main(args: Array[String]): Unit = {
@@ -147,16 +144,6 @@ abstract class SparkRunner { parent =>
     } else {
       val repo = repository
       val gridConfig = grid.ifDefinedThen(repo)((g, repo) => g.addStartupHook(new SyncRepositoryHook(repo)))
-
-      implicit class Args(arr: Array[String]) {
-        def arg[T](f: SparkRunner => Option[T], flag: String): Array[String] = {
-          f(SparkRunner.this).map(o => arr ++ Array(flag, o.toString)).getOrElse(arr)
-        }
-
-        def conf[T](f: SparkRunner => Option[T], conf: String): Array[String] = {
-          f(SparkRunner.this).map(o => arr ++ Array("--conf", conf + "=" + o.toString)).getOrElse(arr)
-        }
-      }
 
       val retCode = GridExecutor.withInstance(gridConfig) { executor =>
         val task = executor.submit(new Callable[Int] with Serializable {
@@ -174,11 +161,35 @@ abstract class SparkRunner { parent =>
           Thread.sleep(1000)
         }
       }
-      
+
       System.exit(retCode)
     }
   }
 
   def run(args: Array[String])
+
+}
+
+object SparkRunner {
+
+  type ArgumentBuilder[T <: SparkRunner] = T => Iterable[String]
+  
+  case class SparkArgument[T <: SparkRunner](submitArg: Option[String], confKey: Option[String], flag: Option[String], accessor: T => Option[String]) extends (T => Iterable[String]) with Serializable {
+    def apply(instance: T): Iterable[String] = {
+      accessor(instance).map(value =>
+        // if we have a flag, then we have slightly different behavior--
+        // we pass the flag argument with no value
+        (if (flag.isDefined) {
+          if (accessor(instance).map(_.toLowerCase).contains("true")) {
+            flag.toIterable
+          } else {
+            Iterable.empty
+          }
+        } else {
+          submitArg.fold(Iterable.empty[String])(arg => Iterable(arg, value))
+        }) ++ confKey.fold(Iterable.empty[String])(conf => Iterable("--conf", s"$conf=$value"))
+      ).getOrElse(Iterable.empty)
+    }
+  }
 
 }
