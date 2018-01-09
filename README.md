@@ -19,7 +19,7 @@ This project allows for remote-execution of JVM code with the only remote depend
 Using SBT:
 
 ```
-libraryDependencies += "com.hindog.grid" %% "grid-executor-core" % "1.1.18"
+libraryDependencies += "com.hindog.grid" %% "grid-executor-core" % "1.1.21"
 ```
 
 Using Maven:
@@ -28,7 +28,7 @@ Using Maven:
 <dependency>
     <groupId>com.hindog.grid</groupId>
     <artifactId>grid-executor-core_2.11</artifactId>
-    <version>1.1.18</version>
+    <version>1.1.21</version>
 </dependency>
 ```
 
