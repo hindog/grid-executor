@@ -22,6 +22,7 @@ class SparkRunnerTest extends WordSpecLike with Matchers {
     conf.set("spark.driver.cores", "4")
     conf.set("spark.driver.supervise", "true")
     conf.set("spark.submit.verbose", "true")
+    conf.set("spark.yarn.tags", "tag1")
     
     override def grid: GridConfig = GridConfig("test")
     override def run(args: Array[String]): Unit = ???
@@ -35,20 +36,14 @@ class SparkRunnerTest extends WordSpecLike with Matchers {
         "/bin/bash",
         "spark-submit",
         "--verbose",
-        "--conf", "spark.submit.verbose=true",
         "--class", s"com.hindog.grid.spark.SparkRunnerTest$$TestRunner",
         "--master", "yarn",
-        "--conf", "spark.master=yarn",
         "--driver-memory", "4g",
-        "--conf", "spark.driver.memory=4g",
         "--driver-java-options", "-Dextra.opt=true -Dextra.opt2=true",
-        "--conf", "spark.driver.extraJavaOptions=-Dextra.opt=true -Dextra.opt2=true",
         "--driver-library-path", "/extraPath",
-        "--conf", "spark.driver.extraLibraryPath=/extraPath",
         "--driver-cores", "4",
-        "--conf", "spark.driver.cores=4",
         "--supervise",
-        "--conf", "spark.driver.supervise=true",
+        "--conf", "spark.yarn.tags=tag1",
         appJar,
         "arg1", "arg2"
       ).toSeq

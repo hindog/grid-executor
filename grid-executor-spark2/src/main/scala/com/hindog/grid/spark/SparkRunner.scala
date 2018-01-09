@@ -132,7 +132,12 @@ abstract class SparkRunner { parent =>
       conf.set("spark.jars", clusterClasspath.mkString(","))
     }
 
-    (shellCommand ++ arguments.flatMap(_.apply(this)) ++ Seq(applicationJar)).toArray ++ args
+    val ignoreConfKeys = arguments.flatMap{
+      case arg: SparkArgument[_] => arg.confKey.toSeq
+      case _ => Seq.empty
+    }.toSet
+
+    (shellCommand ++ arguments.flatMap(_.apply(this)) ++ conf.getAll.filterNot(kv => ignoreConfKeys.contains(kv._1)).flatMap{ case (key, value) => Array("--conf", s"$key=$value") } ++ Seq(applicationJar)).toArray ++ args
   }
 
   def main(args: Array[String]): Unit = {
@@ -187,7 +192,7 @@ object SparkRunner {
           }
         } else {
           submitArg.fold(Iterable.empty[String])(arg => Iterable(arg, value))
-        }) ++ confKey.fold(Iterable.empty[String])(conf => Iterable("--conf", s"$conf=$value"))
+        })
       ).getOrElse(Iterable.empty)
     }
   }
