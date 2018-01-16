@@ -1,11 +1,11 @@
 package com.hindog.grid
 
-import java.io.File
-
-import org.gridkit.nanocloud.{Cloud, RemoteNode, VX}
-import org.gridkit.vicluster.{ViNode, ViProps}
+import org.gridkit.nanocloud._
+import org.gridkit.vicluster._
 
 import scala.collection._
+
+import java.io.File
 
 /*
  *    __   _         __         
@@ -34,6 +34,8 @@ case class RemoteNodeConfig private (hostname: String, name: String, config: ViN
 		RemoteNode.at(node).useSimpleRemoting()
 		RemoteNode.at(node).setRemoteHost(hostname)
 		RemoteNode.at(node).setRemoteJarCachePath(jarCache.toString)
+		node.setConfigElement(ViConf.LOG_LOGGER_PROVIDER, "slf4j")
+		
 		javaCommand.foreach(j => RemoteNode.at(node).setRemoteJavaExec(j.toString))
 		sshAccount.foreach(a => RemoteNode.at(node).setRemoteAccount(a))
 		sshKey.foreach(f => RemoteNode.at(node).setSshPrivateKey(f.toString))
@@ -66,6 +68,7 @@ case class LocalNodeConfig private (name: String, config: ViNode => ViNode, star
 	override def create(cloud: Cloud): ViNode = {
 		val node = cloud.node(name)
 		node.x(VX.TYPE).setLocal()
+		node.setConfigElement(ViConf.LOG_LOGGER_PROVIDER, "slf4j")
 		node
 	}
 

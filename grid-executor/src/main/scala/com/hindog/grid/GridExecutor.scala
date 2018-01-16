@@ -202,10 +202,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 				latch.await(30L, TimeUnit.SECONDS)
 			}
 		} catch {
-			case NonFatal(ex) => {
-				ex.printStackTrace()
-				throw new RuntimeException(s"Exception while running $name hooks", ex)
-			}
+			case NonFatal(ex) => logger.warn(s"Exception while running $name hooks", ex)
 		}
 	}
 
