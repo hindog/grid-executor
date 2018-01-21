@@ -24,7 +24,7 @@ trait NodeConfig extends GridConfigurable {
 	def name: String
 }
 
-case class RemoteNodeConfig private (hostname: String, name: String, config: ViNode => ViNode, startupHooks: Seq[Hook], shutdownHooks: Seq[Hook], sshKey: Option[File], sshAccount: Option[String], javaCommand: Option[String], jarCache: File) extends NodeConfig {
+case class RemoteNodeConfig private (hostname: String, name: String, slots: Option[Int], config: ViNode => ViNode, startupHooks: Seq[Hook], shutdownHooks: Seq[Hook], sshKey: Option[File], sshAccount: Option[String], javaCommand: Option[String], jarCache: File) extends NodeConfig {
 
 	override type Repr = RemoteNodeConfig
 
@@ -42,6 +42,7 @@ case class RemoteNodeConfig private (hostname: String, name: String, config: ViN
 	}
 
 	override def withName(name: String): RemoteNodeConfig = copy(name = name)
+	override def withSlots(slots: Int): RemoteNodeConfig = copy(slots = Option(slots))
 	override def apply(configStmt: ViNode => Unit): RemoteNodeConfig = copy(config = node => { configStmt(config(node)); node })
 
 	def addStartupHook(hook: Hook): RemoteNodeConfig = copy(startupHooks = startupHooks :+ hook)
@@ -54,13 +55,13 @@ case class RemoteNodeConfig private (hostname: String, name: String, config: ViN
 
 object RemoteNodeConfig {
 	def apply(hostname: String, name: String, startupHooks: Seq[Hook] = Seq.empty, shutdownHooks: Seq[Hook] = Seq.empty, sshKey: Option[File] = None, sshAccount: Option[String] = None, javaCommand: Option[String] = None, jarCache: File = new File(".jar-cache")): RemoteNodeConfig = {
-		RemoteNodeConfig(hostname, name, identity, startupHooks, shutdownHooks, sshKey, sshAccount, javaCommand, jarCache)
+		RemoteNodeConfig(hostname, name, None, identity, startupHooks, shutdownHooks, sshKey, sshAccount, javaCommand, jarCache)
 	}
 
 	def apply(hostname: String): RemoteNodeConfig = RemoteNodeConfig(hostname, hostname)
 }
 
-case class LocalNodeConfig private (name: String, config: ViNode => ViNode, startupHooks: Seq[Hook], shutdownHooks: Seq[Hook]) extends NodeConfig {
+case class LocalNodeConfig private (name: String, slots: Option[Int], config: ViNode => ViNode, startupHooks: Seq[Hook], shutdownHooks: Seq[Hook]) extends NodeConfig {
 
 	override type Repr = LocalNodeConfig
 
@@ -71,6 +72,8 @@ case class LocalNodeConfig private (name: String, config: ViNode => ViNode, star
 	}
 
 	override def withName(name: String): LocalNodeConfig = copy(name = name)
+	override def withSlots(slots: Int): LocalNodeConfig = copy(slots = Option(slots))
+
 	override def apply(configStmt: ViNode => Unit): LocalNodeConfig = copy(config = node => { configStmt(config(node)); node })
 
 	def addStartupHook(hook: Hook): LocalNodeConfig = copy(startupHooks = startupHooks :+ hook)
@@ -80,7 +83,7 @@ case class LocalNodeConfig private (name: String, config: ViNode => ViNode, star
 
 object LocalNodeConfig {
 	def apply(name: String, startupHooks: Seq[Hook] = Seq.empty, shutdownHooks: Seq[Hook] = Seq.empty): LocalNodeConfig = {
-		LocalNodeConfig(name, identity, startupHooks, shutdownHooks)
+		LocalNodeConfig(name, None, identity, startupHooks, shutdownHooks)
 	}
 }
 

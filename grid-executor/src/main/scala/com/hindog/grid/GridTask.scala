@@ -29,14 +29,14 @@ trait GridTask[T] {
 	Base implementation for a single-node task execution.
 	Selects any available node and executes the `Callable[T]` on it.
  */
-class NodeTask[T](work: ViNode => Callable[T], onComplete: Try[T] => Unit = GridTask.emptyCallback) extends GridTask[T] {
+class NodeTask[T](work: GridExecutor.Node => Callable[T], onComplete: Try[T] => Unit = GridTask.emptyCallback) extends GridTask[T] {
 	import GridTask._
 
 	def apply(executor: GridExecutor): RunnableFuture[T] = {
 		new FutureTask[T](new Callable[T] {
 			override def call(): T = executor.withNode(node => {
 				val remote = remoteCallable(work(node))
-				node.exec(remote).get
+				node.node.exec(remote).get
 			})
 		}) {
 			override def set(v: T): Unit = { super.set(v); onComplete(Success(v)) }

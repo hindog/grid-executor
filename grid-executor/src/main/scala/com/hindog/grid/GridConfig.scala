@@ -24,7 +24,7 @@ import scala.util.Random
  * TODO: allow for a custom strategy to select which node/slot to execute on for each slot
  */
 
-case class GridConfig(name: String, nodes: Seq[NodeConfig], config: ViNode => ViNode = identity, startupHooks: Seq[Hook] = Seq.empty, shutdownHooks: Seq[Hook] = Seq.empty, repository: Option[Repository] = None) extends GridConfigurable {
+case class GridConfig(name: String, nodes: Seq[NodeConfig], config: ViNode => ViNode = identity, slots: Option[Int] = None, startupHooks: Seq[Hook] = Seq.empty, shutdownHooks: Seq[Hook] = Seq.empty, repository: Option[Repository] = None) extends GridConfigurable {
 
 	override type Repr = GridConfig
 
@@ -32,6 +32,8 @@ case class GridConfig(name: String, nodes: Seq[NodeConfig], config: ViNode => Vi
 
 	// override name to allow sourcing from different set of props
 	def withName(name: String): GridConfig = copy(name = name)
+	def withSlots(slots: Int): GridConfig = copy(slots = Option(slots))
+	
 	def withConfig(configure: ViNode => ViNode): GridConfig = copy(config = node => configure(config(node)))
 	def addStartupHook(hook: Hook): GridConfig = copy(startupHooks = startupHooks :+ hook)
 	def addShutdownHook(hook: Hook): GridConfig = copy(shutdownHooks = shutdownHooks :+ hook)

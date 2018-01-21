@@ -27,6 +27,7 @@ trait GridConfigurable {
 	import GridConfigurable._
 
 	def name: String
+	def slots: Option[Int]
 
 	// return function that will apply entire configuration to a node
 	def config: ViNode => ViNode
@@ -41,6 +42,7 @@ trait GridConfigurable {
 	def shutdownHooks: Seq[Hook]
 
 	def withName(name: String): Repr
+	def withSlots(slots: Int): Repr
 	def withSilentShutdown = apply(_.setConfigElement(ViConf.CONSOLE_SILENT_SHUTDOWN, "true"))
 	def withStdIn(is: InputStream = System.in) = apply(_.setConfigElement(ViConf.CONSOLE_STD_IN, is))
 	def withStdOut(os: PrintStream = System.out) = apply(_.setConfigElement(ViConf.CONSOLE_STD_OUT, os))

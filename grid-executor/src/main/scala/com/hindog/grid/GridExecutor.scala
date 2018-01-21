@@ -3,8 +3,8 @@ package com.hindog.grid
 import java.util
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent._
-
 import com.hindog.grid.GridConfigurable.Keys
+import com.hindog.grid.GridExecutor.Node
 import org.gridkit.nanocloud.CloudFactory
 import org.gridkit.nanocloud.telecontrol.HostControlConsole
 import org.gridkit.vicluster._
@@ -39,6 +39,7 @@ import scala.util.control.NonFatal
 class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorService with Logging {
 
 	import scala.collection.JavaConverters._
+	import GridExecutor._
 
 	private val cloud = CloudFactory.createCloud()
 
@@ -53,7 +54,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	threadPool.setRejectedExecutionHandler(new CallerRunsPolicy())
 
 	private val viNodes = {
-		val nodes = gridConfig.nodes.map(node => {
+		val nodes = gridConfig.nodes.flatMap(node => {
 			// create node (but not yet initialized)
 			val viNode = node.create(cloud)
 
@@ -61,7 +62,9 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 			viNode.setProp(Keys.gridIdKey, gridConfig.name)
 
 			// configure node (apply grid-level config and then node-level config)
-			(gridConfig.config andThen node.config)(viNode)
+			val instance = (gridConfig.config andThen node.config)(viNode)
+			val slots = (node.slots orElse gridConfig.slots).getOrElse(1)
+			(0 until slots).map(i => Node(instance, i + 1))
 		})
 
 		try {
@@ -75,9 +78,9 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	}
 
 	// tracks which nodes/slots are available for execution
-	private val nodeDeque = new LinkedBlockingDeque[ViNode](viNodes.asJavaCollection)
+	private val nodeDeque = new LinkedBlockingDeque[Node](viNodes.asJavaCollection)
 
-	protected[grid] def withNode[T](work: ViNode => T): T = {
+	protected[grid] def withNode[T](work: Node => T): T = {
 		val node = nodeDeque.take()
 		try {
 			work(node)
@@ -221,6 +224,8 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 }
 
 object GridExecutor {
+
+	case class Node(node: ViNode, slot: Int) extends Serializable
 
 	// Creates a new GridExecutor whose life-cycle will be externally managed (ie: caller is responsible for calling 'shutdown')
 	def apply(config: GridConfig): GridExecutor = new GridExecutor(config)
