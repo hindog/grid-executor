@@ -9,6 +9,6 @@ import com.typesafe.scalalogging.LazyLogging
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-trait Logging extends LazyLogging {
+protected[grid] trait Logging extends LazyLogging {
 
 }

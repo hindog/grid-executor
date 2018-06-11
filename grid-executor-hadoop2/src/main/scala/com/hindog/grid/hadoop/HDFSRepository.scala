@@ -1,10 +1,11 @@
 package com.hindog.grid
 package hadoop
 
+import com.hindog.grid.hadoop.HDFSRepository.SerializableConfiguration
+
 import java.io.{Externalizable, ObjectInput, ObjectOutput}
 import java.net.URI
-import java.util.Date
-
+import java.util.{Date, Properties}
 import com.hindog.grid.repo.{Repository, Resource}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.conf.Configuration
@@ -20,9 +21,16 @@ import scala.language.postfixOps
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-case class HDFSRepository(hdfsPath: String, conf: () => Configuration, cleanInterval: Long = (24 hours).toMillis, maxLastAccessAge: Long = (30 days).toMillis) extends Repository with Logging {
+case class HDFSRepository(properties: Properties) extends Repository with Logging {
 
-  @transient private lazy val fs = FileSystem.get(conf())
+  import HDFSRepository._
+
+  private val hdfsPath = Option(properties.getProperty("base-dir")).getOrElse(defaultPath)
+  private val cleanInterval = Option(properties.getProperty("clean-interval")).map(Duration.apply).getOrElse(defaultCleanInterval).toMillis
+  private val maxLastAccessAge = Option(properties.getProperty("max-last-access-age")).map(Duration.apply).getOrElse(defaultMaxLastAccessAge).toMillis
+
+  @transient private lazy val fs = FileSystem.get(HadoopEnvironment.loadConfiguration())
+
   @transient private lazy val path = {
     if (!hdfsPath.startsWith("/")) {
       new Path(fs.getHomeDirectory.toUri.getPath, hdfsPath)
@@ -88,20 +96,13 @@ case class HDFSRepository(hdfsPath: String, conf: () => Configuration, cleanInte
 
 object HDFSRepository {
   private val defaultPath = ".jar-cache"
-  
-  import HadoopEnvironment._
+  private val defaultCleanInterval = 24 hours
+  private val defaultMaxLastAccessAge = 30 days
 
+  // TODO: allow custom Hadoop configuration and use this for a serializable copy
   case class SerializableConfiguration(var conf: Configuration) extends Configuration(conf) with Externalizable {
     def this() = this(new Configuration(true))
     override def writeExternal(out: ObjectOutput): Unit = write(out)
     override def readExternal(in: ObjectInput): Unit = readFields(in)
   }
-
-  def apply(): HDFSRepository = new HDFSRepository(defaultPath, () => loadConfiguration())
-  def apply(path: String) = new HDFSRepository(path, () => loadConfiguration())
-  def apply(conf: Configuration) = new HDFSRepository(defaultPath, {
-    val serializable = SerializableConfiguration(conf)
-    () => serializable
-  })
-
 }

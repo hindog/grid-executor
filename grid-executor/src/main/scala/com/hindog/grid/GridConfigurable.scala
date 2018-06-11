@@ -62,8 +62,13 @@ trait GridConfigurable {
 	def withRemoveClasspath(cp: String) = apply(_.setConfigElement(JvmProps.CP_REMOVE, cp))
 	def withInheritClasspath(value: Boolean = true) = apply(_.setConfigElement(ViConf.CLASSPATH_INHERIT, value.toString))
 	def withEnv(name: String, value: String) = apply(node => JvmProps.setEnv(node, name, value))
+	def withEnv(settings: (String, String)*) = apply(node => settings.foreach(kv => JvmProps.setEnv(node, kv._1, kv._2)))
 	def withJavaAgent(file: File) = apply(_.setConfigElement(ViConf.JVM_AGENT, file.toString + "="))
 	def withSystemProperty(key: String, value: String) = apply(_.setProp(key, value))
+	def withSystemProperties(props: (String, String)*) = apply(node => {
+		props
+		.foreach(kv => node.setProp(kv._1, kv._2))
+	})
 	def withSystemProperties(props: Properties) = apply(node => {
 		props.asScala.foreach(kv => node.setProp(kv._1, kv._2))
 	})

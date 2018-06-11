@@ -19,7 +19,7 @@ lazy val commonSettings = Seq(
 	releaseVersionBump := sbtrelease.Version.Bump.Bugfix,
 	releasePublishArtifactsAction := PgpKeys.publishSigned.value,
 	javacOptions ++= Seq("-Xlint:unchecked", "-source", "1.7", "-target", "1.7"),
-	scalacOptions ++= Seq("-Xlint:_", "-Xfatal-warnings", "-target:jvm-1.7", "-feature", "-language:_"),
+	scalacOptions ++= Seq("-Xlint:_", "-target:jvm-1.7", "-feature", "-language:_"),
 	testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF"),
 	autoAPIMappings := true,
 	publishMavenStyle := true,
@@ -60,7 +60,7 @@ lazy val commonSettings = Seq(
 lazy val root = Project(
 	id = "grid-executor",
 	base = file(".")
-).aggregate(core, awsS3, hadoop2, spark2, examples).settings(commonSettings)
+).aggregate(core, awsS3, launcher, hadoop2, spark2, examples).settings(commonSettings)
 
 lazy val core = project.in(file("grid-executor")).settings(commonSettings).settings(
     moduleName := "grid-executor-core",
@@ -71,6 +71,7 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings).setti
 			"com.google.guava" % "guava" % "19.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.12",
+			"com.github.igor-suhorukov" % "mvn-classloader" % "1.9",
 			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test"
 		)
   )
@@ -80,12 +81,20 @@ lazy val awsS3 = project.in(file("grid-executor-s3")).settings(commonSettings).s
     libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.11.126"
   ).dependsOn(core)
 
+lazy val launcher = project.in(file("grid-executor-launcher")).settings(commonSettings).settings(
+	moduleName := "grid-executor-launcher",
+	libraryDependencies ++= Seq(
+		"org.rogach" %% "scallop" % "3.1.2",
+		"io.github.lukehutch" % "fast-classpath-scanner" % "2.21"
+	)
+).dependsOn(core)
+
 lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSettings).settings(
     moduleName := "grid-executor-hadoop2",
 		libraryDependencies ++= Seq(
 			"org.apache.hadoop" % "hadoop-client" % "2.7.2"
     )
-	).dependsOn(core)
+	).dependsOn(core, launcher)
 
 lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettings).settings(
     moduleName := "grid-executor-spark2",
@@ -94,7 +103,7 @@ lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettin
 			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
 			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
 		)
-	).dependsOn(core)
+	).dependsOn(core, launcher)
 
 lazy val examples = project.in(file("grid-executor-examples")).settings(commonSettings).settings(
     moduleName := "grid-executor-examples",

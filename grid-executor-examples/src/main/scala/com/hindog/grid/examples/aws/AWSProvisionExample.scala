@@ -1,8 +1,4 @@
-package com.hindog.grid.examples
-
-import java.io.File
-import java.lang.management.ManagementFactory
-import java.util.Properties
+package com.hindog.grid.examples.aws
 
 import com.hindog.grid.{GridConfig, GridExecutor, Logging, RemoteNodeConfig}
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions.Builder._
@@ -10,11 +6,15 @@ import org.jclouds.compute.ComputeServiceContext
 import org.jclouds.logging.log4j.config.Log4JLoggingModule
 import org.jclouds.sshj.config.SshjSshClientModule
 
-import scala.collection.JavaConversions._
 import scala.collection._
+import scala.collection.JavaConversions._
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+
+import java.io.File
+import java.lang.management.ManagementFactory
+import java.util.Properties
 
 /*
  * Demonstrates how you could use JClouds API to automatically provision grid nodes for use with grid-executor

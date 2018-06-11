@@ -4,6 +4,7 @@ import java.io.File
 import com.hindog.grid.ClasspathUtils
 import com.hindog.grid.repo.Resource
 import com.hindog.grid.spark._
+import org.apache.spark.SparkConf
 import org.apache.spark.repl.Main.outputDir
 
 import scala.collection._
@@ -20,22 +21,27 @@ import java.net.InetAddress
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-trait SparkShellSupport extends SparkRunner {
+trait SparkShellSupport extends SparkLauncher {
   
   def shellColor: Boolean = false
   def prompt: String = "spark> "
 
-  conf.set("spark.submit.deployMode", "client")
-  conf.set("spark.repl.classpath", clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
-  conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath())
+  override def configure(args: Array[String], conf: SparkConf): SparkConf = {
 
-  if (shellColor) {
-    System.setProperty("scala.color", "true")
-    conf.append("spark.driver.extraJavaOptions", s"-Dscala.color=true")
+    conf.set("spark.repl.classpath", clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
+    conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath)
+
+    if (shellColor) {
+      System.setProperty("scala.color", "true")
+      conf.append("spark.driver.extraJavaOptions", s"-Dscala.color=true")
+    }
+
+    System.setProperty("scala.repl.prompt", prompt)
+    conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"" + prompt + "\"")
+    
+    super.configure(args, conf)
+         .set("spark.submit.deployMode", "client")
   }
-
-  System.setProperty("scala.repl.prompt", prompt)
-  conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"" + prompt + "\"")
 
   def initCommands(): String = {
     s"""
@@ -47,6 +53,8 @@ trait SparkShellSupport extends SparkRunner {
 
   override def run(args: Array[String]): Unit = {
 
+    val conf = configure(args, new SparkConf(loadDefaults))
+    
     val interpArguments = List(
       "-Yrepl-class-based",
       "-Yrepl-outdir", s"${outputDir.getAbsolutePath}",
