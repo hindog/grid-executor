@@ -12,6 +12,7 @@ import org.gridkit.vicluster.telecontrol.StreamCopyThread
 
 import scala.collection._
 import scala.concurrent.{ExecutionContext, Future => SFuture}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 /*
@@ -153,22 +154,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 			case NonFatal(ex) => logger.warn("Exception occurred while shutting down cloud", ex)
 		}
 
-		val ret = thunk
-
-		try {
-
-			cloud.listNodes("**").asScala.foreach(vi => {
-				vi.getPragma(ViConf.SPI_STREAM_COPY_SERVICE).asInstanceOf[StreamCopyThread].shutdown()
-				val hostControl = vi.getPragma(ViConf.SPI_CONTROL_CONSOLE).asInstanceOf[HostControlConsole]
-				hostControl.terminate()
-			})
-		} catch {
-			case NonFatal(ex) => // ignore
-		}
-
-		cloud.shutdown()
-
-		ret
+		try { thunk } finally { Try(cloud.shutdown()).recover{ case ex => logger.warn("Exception while shutting down grid", ex)} }
 	}
 
 	protected[grid] def runHooks(name: String, f: GridConfigurable => Seq[Hook]) = {

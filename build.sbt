@@ -70,7 +70,7 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings).setti
 			"com.twitter" %% "chill" % "0.9.0",
 			"com.google.guava" % "guava" % "19.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
-			"org.gridkit.lab" % "nanocloud" % "0.8.12",
+			"org.gridkit.lab" % "nanocloud" % "0.8.16",
 			"com.github.igor-suhorukov" % "mvn-classloader" % "1.9",
 			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test"
 		)
