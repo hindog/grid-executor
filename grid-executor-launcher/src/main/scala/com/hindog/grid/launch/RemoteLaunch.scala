@@ -34,7 +34,8 @@ object RemoteLaunch {
   def gridConfig(name: String): GridConfig = {
     val nc = launchArgs.node.toOption match {
       case None => throw new RuntimeException("No node configured for launch!  Use -Dgrid.node=<hostname> or -n <hostname>")
-      case Some("local") => LocalNodeConfig(s"local")
+      case Some("isolate") => IsolateNodeConfig("isolate")
+      case Some("local") => LocalNodeConfig("local")
       case Some(remote) => RemoteNodeConfig(remote)
         .ifThen(launchArgs.remoteAccount.isDefined)(_.withSSHAccount(launchArgs.remoteAccount()))
         .ifThen(launchArgs.identityKey.isDefined)(_.withSSHKey(launchArgs.identityKey()))

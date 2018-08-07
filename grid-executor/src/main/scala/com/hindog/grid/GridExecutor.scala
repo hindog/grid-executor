@@ -5,7 +5,7 @@ import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent._
 import com.hindog.grid.GridConfigurable.Keys
 import com.hindog.grid.GridExecutor.Node
-import org.gridkit.nanocloud.CloudFactory
+import org.gridkit.nanocloud.{CloudFactory, VX}
 import org.gridkit.nanocloud.telecontrol.HostControlConsole
 import org.gridkit.vicluster._
 import org.gridkit.vicluster.telecontrol.StreamCopyThread
@@ -43,7 +43,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	import GridExecutor._
 
 	private val cloud = CloudFactory.createCloud()
-
+	cloud.node("**").x(VX.TYPE).setIsolate()
 	protected val threadFactory = Executors.defaultThreadFactory()
 	protected val threadPool = Executors.newFixedThreadPool(gridConfig.nodes.size, new ThreadFactory {
 		override def newThread(r: Runnable): Thread = {

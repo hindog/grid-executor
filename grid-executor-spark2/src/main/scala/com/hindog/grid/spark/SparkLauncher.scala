@@ -1,8 +1,9 @@
 package com.hindog.grid
 package spark
 
-import com.hindog.grid.launch.{RemoteLauncher, RemoteLaunch}
+import com.hindog.grid.launch.{RemoteLaunch, RemoteLauncher}
 import com.hindog.grid.launch.RemoteLauncher.Argument
+import com.hindog.grid.repo.Resource
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
@@ -26,7 +27,7 @@ abstract class SparkLauncher extends RemoteLauncher[SparkConf] { parent =>
   override protected def confSetIfMissing(conf: SparkConf, key: String, value: String): SparkConf = conf.setIfMissing(key, value)
 
   flag("--verbose",             "spark.submit.verbose")
-  arg("--class",                (instance, _) => RemoteLaunch.launchArgs.mainClass.toOption orElse Option(instance.getClass.getName.stripSuffix("$")))
+  arg("--class",                (instance, _) => RemoteLaunch.launchArgs.mainClass.toOption orElse Option(mainClass.stripSuffix("$")))
   arg("--master",               "spark.master")
   arg("--deploy-mode",          "spark.submit.deployMode")
   arg("--properties-file",      "spark.submit.propertiesFile")
@@ -48,7 +49,7 @@ abstract class SparkLauncher extends RemoteLauncher[SparkConf] { parent =>
   arg("--keytab",               "spark.yarn.keytab")
   flag("--supervise",           "spark.driver.supervise")
 
-  protected def isSubmitted: Boolean = "true" == System.getProperty("SPARK_SUBMIT") || System.getenv("SPARK_YARN_MODE") != null
+  protected def isSubmitted: Boolean = "true" == System.getProperty("SPARK_SUBMIT") || System.getenv("SPARK_YARN_MODE") != null || Option(System.getProperty("spark.app.id")).isDefined || "true" == System.getenv(RemoteLauncher.submitEnvFlag)
 
   protected def shellCommand: Iterable[String] = RemoteLaunch.submitCommand(Seq("spark-submit"))
 
@@ -110,11 +111,12 @@ abstract class SparkLauncher extends RemoteLauncher[SparkConf] { parent =>
 
   override def buildProcess(args: Array[String]): ProcessBuilder = {
     val conf = configure(args, new SparkConf(loadDefaults))
-
+    val clusterClasspath = buildClusterClasspath(ClasspathUtils.listCurrentClasspath.map(Resource.url))
+    
     if (clusterClasspath.nonEmpty) {
       conf.getOption("spark.master") match {
-        case Some("yarn") if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.mkString(","))
-        case other if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.mkString(","))
+        case Some("yarn") if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.map(_.uri).mkString(","))
+        case other if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.map(_.uri).mkString(","))
       }
     }
 

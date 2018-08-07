@@ -184,8 +184,8 @@ object GridExecutorLocalForkExample extends App {
 
 	*/
 	println("host jvm: " + ManagementFactory.getRuntimeMXBean.getName)
-	val config1: GridConfig = GridConfig.localFork("fork 1").withMaxHeap("20m").withMinHeap("20m")
-	val config2: GridConfig = GridConfig.localFork("fork 2").withMaxHeap("40m").withMinHeap("40m")
+	val config1: GridConfig = GridConfig.fork("fork 1").withMaxHeap("20m").withMinHeap("20m")
+	val config2: GridConfig = GridConfig.fork("fork 2").withMaxHeap("40m").withMinHeap("40m")
 
 	val fut1: Future[Unit] = GridExecutor.future(config1) {
 		println("forked jvm 1: " + ManagementFactory.getRuntimeMXBean.getName)

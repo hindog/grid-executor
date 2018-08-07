@@ -28,7 +28,7 @@ trait SparkShellSupport extends SparkLauncher {
 
   override def configure(args: Array[String], conf: SparkConf): SparkConf = {
 
-    conf.set("spark.repl.classpath", clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
+    conf.set("spark.repl.classpath", filterClusterClasspath(ClasspathUtils.listCurrentClasspath.map(u => Resource.uri(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
     conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath)
 
     if (shellColor) {

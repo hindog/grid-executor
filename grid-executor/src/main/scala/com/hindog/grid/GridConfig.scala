@@ -56,6 +56,7 @@ object GridConfig {
 
 	def apply(id: String, nodes: NodeConfig*): GridConfig = GridConfig(id, nodes.toSeq)
 
-	def localFork(id: String = "fork"): GridConfig = apply(id, LocalNodeConfig(id))
+	def fork(id: String = "fork"): GridConfig = apply(id, LocalNodeConfig(id))
 
+	def isolate(id: String = "isolated", configure: IsolateNodeConfig => IsolateNodeConfig = identity): GridConfig = apply(id, configure(IsolateNodeConfig(id)))
 }

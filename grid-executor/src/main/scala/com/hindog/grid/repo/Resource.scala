@@ -1,12 +1,17 @@
-package com.hindog.grid
-package repo
+package com.hindog.grid.repo
 
-import java.io.File
-import java.net.URI
+import better.files._
+import com.hindog.grid.{Logging, _}
+import com.hindog.grid.repo.file.FileResource
+import org.apache.commons.codec.binary.Hex
+import org.apache.commons.codec.digest.{DigestUtils, MessageDigestAlgorithms}
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
+import org.apache.commons.compress.utils.IOUtils
 
-import org.apache.commons.io.FileUtils
-
-import scala.util.matching.Regex
+import java.io.{FileInputStream, InputStream, File => JFile}
+import java.net.{URI, URL}
+import java.nio.file._
+import java.security.{DigestOutputStream, MessageDigest}
 
 /*
  *    __   _         __         
@@ -15,39 +20,83 @@ import scala.util.matching.Regex
  * /_//_/_/_//_/\_,_/\___/\_, / 
  *                       /___/
  */
-case class Resource(baseUri: URI, path: String) extends Serializable {
-
-  def fetch: File = {
-    if (baseUri.getScheme.toLowerCase == "file") {
-      new File(baseUri / path)
-    } else {
-      val tmp = File.createTempFile("jar-cache", ".jar")
-      FileUtils.copyURLToFile((baseUri / path).toURL, tmp)
-      tmp
-    }
-  }
-
+trait Resource {
+  def protocol: String = Option(uri.getScheme).map(_.toLowerCase).getOrElse("file")
+  def filename: String
+  def contentHash: String
+  def contentLength: Long
+  def inputStream: InputStream
+  def uri: URI
+  def exists: Boolean
   override def toString: String = uri.toString
-
-  def uri = baseUri / path
 }
 
 object Resource extends Logging {
 
-  /**
-    * Regex used to extract a UUID from a url
-    *
-    * Minimum requirements are a 32 character, alpha-numeric and/or dash sequence.
-    * (UUID.toString, MD5, SHA1, etc are all viable "UUID" patterns)
-    *
-    */
-  protected val hashPattern: Regex = "(.*?)([A-Za-z0-9\\-]{36,}.*)".r
+  private val bufferSize = 1024 * 1024 * 5 // 5mb buffer
 
-  /**
-    * Parse a URI expecting some form of UUID/Hash digest in the URI's path based on the 'hashPattern' regex
-    */
-  def parse(uri: URI): Option[Resource] = {
-    hashPattern.findFirstMatchIn(uri.toString).map(m => Resource(new URI(m.group(1)), m.group(2)))
+  def url(url: URL): Resource = uri(url.toURI)
+  
+  def uri(uri: URI): Resource = {
+    val f = File(uri)
+    if ("file" == uri.getScheme.toLowerCase) file(f)
+    else inputStream(f.name, f.newInputStream)
+  }
+
+  def file(f: Path): Resource = file(f.toFile)
+  def file(f: JFile): Resource = file(f.getName, f)
+  def file(f: File): Resource = file(f.name, f)
+  def file(filename: String, f: JFile): Resource = file(filename, f.toPath)
+  def file(filename: String, path: Path): Resource = file(filename, File(path))
+  def file(filename: String, file: File): Resource = {
+    if (file.isDirectory) Resource.dir(filename, file)
+    else{
+      file.inputStream() { is => new FileResource(filename, DigestUtils.sha1Hex(is), file) }
+    }
+  }
+
+  def dir(d: Path): Resource = dir(File(d))
+  def dir(d: JFile): Resource = dir(File(d.toPath))
+  def dir(d: File): Resource = dir(d.name, d)
+  def dir(filename: String, d: JFile): Resource = dir(filename, File(d.toPath))
+  def dir(filename: String, d: Path): Resource = dir(filename, File(d))
+  def dir(filename: String, d: File): Resource = {
+    if (!d.isDirectory) throw new IllegalArgumentException(s"$d is not a directory!")
+    val tmp = File.newTemporaryFile(filename + "-", ".jar")
+
+    for {
+      out <- new ZipArchiveOutputStream(tmp.newOutputStream).autoClosed
+    } {
+      d.listRecursively.foreach { file =>
+        val relative = d.relativize(file).toString
+        val entry = out.createArchiveEntry(file.toJava, relative)
+        out.putArchiveEntry(entry)
+        if (!file.isDirectory) {
+          val is = (d / file.toString).newFileInputStream
+          IOUtils.copy(is, out)
+          is.close()
+        }
+        out.closeArchiveEntry()
+      }
+    }
+    file(filename.ifThen(!_.endsWith(".jar"))(_ + ".jar"), tmp)
+  }
+
+  def inputStream(filename: String, is: InputStream): Resource = {
+    val tmp = File.newTemporaryFile(filename + "-", ".jar")
+    val sha1 = MessageDigest.getInstance(MessageDigestAlgorithms.SHA_1)
+
+    val ret = for {
+      in <- is.buffered(bufferSize).autoClosed
+      out <- tmp.newOutputStream.buffered(bufferSize).autoClosed
+      digest = new DigestOutputStream(out, sha1)
+    } yield {
+      in.pipeTo(out)
+      new FileResource(filename, Hex.encodeHexString(digest.getMessageDigest.digest()), tmp)
+    }
+
+    ret.get()
   }
 }
+
 

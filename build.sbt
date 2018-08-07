@@ -5,7 +5,9 @@ git.remoteRepo := "git@github.com:hindog/grid-executor.git"
 enablePlugins(SiteScaladocPlugin)
 
 val jcloudsVersion = "2.0.1"
-val sparkVersion = "2.1.1"
+val sparkVersion = "2.3.1"
+val hadoopVersion = "2.8.4"
+
 
 lazy val commonSettings = Seq(
 	name := "grid-executor",
@@ -60,15 +62,21 @@ lazy val commonSettings = Seq(
 lazy val root = Project(
 	id = "grid-executor",
 	base = file(".")
+).settings(
+	name := "root"
 ).aggregate(core, awsS3, launcher, hadoop2, spark2, examples).settings(commonSettings)
 
 lazy val core = project.in(file("grid-executor")).settings(commonSettings).settings(
-    moduleName := "grid-executor-core",
+		name := "grid-executor-core",
 		libraryDependencies ++= Seq(
 			"com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
 			"commons-io" % "commons-io" % "2.1",
+			"commons-codec" % "commons-codec" % "1.10",
+			"org.apache.commons" % "commons-compress" % "1.17",
 			"com.twitter" %% "chill" % "0.9.0",
 			"com.google.guava" % "guava" % "19.0",
+			"com.jsuereth" %% "scala-arm" % "2.0",
+			"com.github.pathikrit" %% "better-files" % "3.5.0",
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.16",
 			"com.github.igor-suhorukov" % "mvn-classloader" % "1.9",
@@ -77,12 +85,12 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings).setti
   )
 
 lazy val awsS3 = project.in(file("grid-executor-s3")).settings(commonSettings).settings(
-    moduleName := "grid-executor-s3",
-    libraryDependencies += "com.amazonaws" % "aws-java-sdk-s3" % "1.11.126"
+		name := "grid-executor-s3",
+    libraryDependencies += "com.amazonaws" % "aws-java-sdk" % "1.11.358" % "provided"
   ).dependsOn(core)
 
 lazy val launcher = project.in(file("grid-executor-launcher")).settings(commonSettings).settings(
-	moduleName := "grid-executor-launcher",
+	name := "grid-executor-launcher",
 	libraryDependencies ++= Seq(
 		"org.rogach" %% "scallop" % "3.1.2",
 		"io.github.lukehutch" % "fast-classpath-scanner" % "2.21"
@@ -90,14 +98,14 @@ lazy val launcher = project.in(file("grid-executor-launcher")).settings(commonSe
 ).dependsOn(core)
 
 lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSettings).settings(
-    moduleName := "grid-executor-hadoop2",
+		name := "grid-executor-hadoop2",
 		libraryDependencies ++= Seq(
-			"org.apache.hadoop" % "hadoop-client" % "2.7.2"
+			"org.apache.hadoop" % "hadoop-client" % hadoopVersion exclude("com.amazonaws", "aws-java-sdk")
     )
 	).dependsOn(core, launcher)
 
 lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettings).settings(
-    moduleName := "grid-executor-spark2",
+    name := "grid-executor-spark2",
     libraryDependencies ++= Seq(
 			"org.aspectj" % "aspectjrt" % "1.8.9" % "provided",
 			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
@@ -106,17 +114,20 @@ lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettin
 	).dependsOn(core, launcher)
 
 lazy val examples = project.in(file("grid-executor-examples")).settings(commonSettings).settings(
-    moduleName := "grid-executor-examples",
+		name := "grid-executor-examples",
     libraryDependencies ++= Seq(
       "org.slf4j" % "slf4j-log4j12" % "1.7.25",
 			"org.scala-lang" % "scala-compiler" % scalaVersion.value,
       "org.apache.jclouds" % "jclouds-core" % jcloudsVersion,
       "org.apache.jclouds.driver" % "jclouds-log4j" % jcloudsVersion,
       "org.apache.jclouds.driver" % "jclouds-sshj" % jcloudsVersion,
-      "org.apache.jclouds.provider" % "aws-ec2" % jcloudsVersion,
-			"com.amazonaws" % "aws-java-sdk-s3" % "1.11.126",
-			"org.apache.hive" % "hive" % "2.1.1",
+      //"org.apache.jclouds.provider" % "aws-ec2" % jcloudsVersion,
+			"com.amazonaws" % "aws-java-sdk-s3" % "1.11.358",
+//			"org.apache.hive" % "hive" % "2.3.0" % "provided",
 			"org.apache.spark" %% "spark-core" % sparkVersion,
-			"org.apache.spark" %% "spark-repl" % sparkVersion
+			"org.apache.spark" %% "spark-repl" % sparkVersion,
+			"org.apache.spark" %% "spark-hive-thriftserver" % sparkVersion,
+			"org.apache.spark" %% "spark-kubernetes" % sparkVersion,
+			"org.apache.hadoop" % "hadoop-aws" % hadoopVersion
 		)
   ).dependsOn(core, hadoop2, awsS3, spark2)

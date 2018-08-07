@@ -1,17 +1,16 @@
 package com.hindog.grid.launch
 
 import com.hindog.grid.{ClasspathUtils, GridConfig, GridExecutor}
-import com.hindog.grid.repo._
+import com.hindog.grid.repo.{Resource, _}
 import com.typesafe.scalalogging.Logger
 import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner
+import org.apache.commons.io.FileUtils
 
 import scala.collection.{mutable, Iterable}
 import scala.collection.mutable.ListBuffer
 
 import java.io.File
 import java.lang.management.ManagementFactory
-import java.net.URI
-import java.nio.file.Paths
 import java.util.Properties
 import java.util.concurrent.Callable
 
@@ -61,7 +60,7 @@ trait RemoteLauncher[C] {
 
   protected def mainClass: String = getClass.getName.stripSuffix("$")
   
-  @transient lazy val applicationJar: String = {
+  def applicationJar: String = {
     import scala.collection.JavaConverters._
     val result = new FastClasspathScanner(this.getClass.getName).ignoreFieldVisibility().ignoreMethodVisibility().suppressMatchProcessorExceptions().scan(10)
 
@@ -72,13 +71,25 @@ trait RemoteLauncher[C] {
     }
   }
 
-  protected def clusterClasspath: Iterable[String] = {
-    val repo = repository
-    val classpath = clusterClasspathFilter(ClasspathUtils.listCurrentClasspath.flatMap(u => Resource.parse(u.toURI)))
-    classpath.map(cp => repo.flatMap(r => Option(r.resolve(cp))).getOrElse(cp.uri)).map(_.toString)
+  protected def buildClusterClasspath(classpath: Iterable[Resource]): Iterable[Resource] = filterClusterClasspath {
+    import scala.collection.JavaConverters._
+
+    repository match {
+      case Some(repo) => try {
+        val jdkJars = FileUtils.listFiles(new File(System.getProperty("java.home")), Array(".jar"), true).asScala.map { f =>
+          f.toURI.toURL.toString
+        }.toSet
+        classpath.filter { cp => !jdkJars.contains(cp.uri.toURL.toString) }.map(repo.put)
+      } finally {
+        //repo.close()
+      }
+      case None => classpath
+    }
+
+
   }
 
-  protected def clusterClasspathFilter: Iterable[Resource] => Iterable[Resource] = identity
+  protected def filterClusterClasspath(classpath: Iterable[Resource]): Iterable[Resource] = classpath
 
 
   def main(args: Array[String]): Unit = {
@@ -88,9 +99,7 @@ trait RemoteLauncher[C] {
     if (isSubmitted) {
       run(args)
     } else {
-      val repo = repository
-      val gridConfig = grid.ifDefinedThen(repo)((g, repo) => g.addStartupHook(new SyncRepositoryHook(repo)))
-                           .withInheritedSystemPropertiesFilter(_.startsWith("grid."))
+      val gridConfig = grid.withInheritedSystemPropertiesFilter(_.startsWith("grid."))
 
       val retCode = GridExecutor.withInstance(gridConfig) { executor =>
         val task = executor.submit(new Callable[Int] with Serializable {
@@ -103,7 +112,8 @@ trait RemoteLauncher[C] {
             val builder = buildProcess(args)
             logger.info(s"Submit Command: \n\n" + builder.command().asScala.mkString(" ") + "\n")
 
-            builder.environment().put(submitEnvFlag, "true")
+            val env = builder.environment()
+            env.put(submitEnvFlag, "true")
             val process = builder.inheritIO().start()
             val ret = process.waitFor()
             ret
@@ -127,7 +137,7 @@ trait RemoteLauncher[C] {
 
 object RemoteLauncher {
 
-  val submitEnvFlag = "GRID_EXECUTOR_SUBMIT"
+  val submitEnvFlag   = "GRID_EXECUTOR_SUBMIT"
 
   type ArgumentBuilder[T, C] = (T, C) => Iterable[String]
 

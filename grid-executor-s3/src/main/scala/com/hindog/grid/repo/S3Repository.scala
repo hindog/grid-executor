@@ -1,75 +1,72 @@
 package com.hindog.grid
 package repo
 
-import java.net.URI
+import com.amazonaws.auth._
+import com.amazonaws.services.s3._
+import com.amazonaws.services.s3.model.ObjectMetadata
 
-import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, EnvironmentVariableCredentialsProvider}
-import com.amazonaws.regions.{AwsEnvVarOverrideRegionProvider, AwsRegionProvider}
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import scala.collection._
 
-import scala.reflect.ClassTag
+import java.util.Properties
 
 /*
- *    __   _         __         
+ *    __   _         __
  *   / /  (_)__  ___/ /__  ____
  *  / _ \/ / _ \/ _  / _ \/ _  /
- * /_//_/_/_//_/\_,_/\___/\_, / 
+ * /_//_/_/_//_/\_,_/\___/\_, /
  *                       /___/
  */
-case class S3Repository(credentialsProviderClass: SerializableCredentialsProvider, regionProviderClass: SerializableRegionProvider, bucketName: String, pathPrefix: String) extends Repository with Logging {
+case class S3Repository(properties: Properties) extends Repository with Logging with RepositoryOps {
 
-  @transient lazy val s3 = {
-    AmazonS3ClientBuilder.standard().withCredentials(credentialsProviderClass).withRegion(regionProviderClass.getRegion).build()
+  @transient protected lazy val credentials = new DefaultAWSCredentialsProviderChain()
+  @transient protected lazy val s3client: AmazonS3 = new AmazonS3Client(credentials.getCredentials)
+
+  private val protocol = prop[String]("protocol", "s3a")
+  private val bucketName = prop[String]("bucket", throw new RepositoryException("missing required property 'bucket'!"))
+  private val prefix = prop[String]("prefix", "/").stripPrefix("/")
+
+  private val cachedListing = {
+    val listing = S3KeyIterator(s3client, bucketName, prefix)
+    val resources = listing.flatMap { s =>
+      val suffix = s.getKey.stripPrefix(prefix).stripPrefix("/")
+      suffix match {
+        case extractPath(contentHash, filename) => Some(new S3Resource(filename, contentHash, s.getSize, protocol, bucketName, s.getKey, s3client))
+        case _ => None
+      }
+    }
+
+    val out = mutable.HashMap[String, Resource](resources.map(r => r.contentHash -> r).toSeq: _*)
+    logger.info(s"Cached ${out.size} object summaries into S3 repository")
+    out
   }
 
-  @transient private lazy val prefix = pathPrefix.stripPrefix("/")
+  protected def objectName(filename: String, contentHash: String): String = s"$prefix/$contentHash/$contentHash-$filename"
+  //protected def key(res: Resource): String = s"$prefix/${res.contentHash}/${res.contentHash}-${res.filename}"
 
-  override def uri: URI = new URI(s3.getBucketLocation(bucketName) + "/" + prefix)
+  override def contains(resource: Resource): Boolean = cachedListing.contains(resource.contentHash) || s3client.getObjectMetadata(bucketName, objectName(resource.filename, resource.contentHash)) == null
 
-  override def contains(resource: Resource): Boolean = s3.doesObjectExist(bucketName, (uri / resource.path).toString)
-
-  override def upload(resource: Resource): Resource = {
-    val targetResource = resolve(resource)
-    logger.debug(s"Uploading ${resource.uri} to $targetResource")
-    s3.putObject(bucketName, targetResource.uri.getPath, resource.fetch)
-    targetResource
+  override def get(filename: String, contentHash: String): Resource = {
+    cachedListing.getOrElse(contentHash, {
+      val key = objectName(filename, contentHash)
+      new S3Resource(filename, contentHash, s3client.getObjectMetadata(bucketName, key).getContentLength, protocol, bucketName, key, s3client)
+    })
   }
 
-  override def resolve(resource: Resource): Resource = Resource(uri, resource.path.replaceAll("/", "-"))
-
-  override def close: Unit = {}
-}
-
-object S3Repository {
-
-  def apply(credentialsProvider: SerializableCredentialsProvider, region: String, bucketName: String, pathPrefix: String): S3Repository = {
-    new S3Repository(credentialsProvider, new SerializableRegionProvider {
-      override def getRegion: String = region
-    }, bucketName, pathPrefix)
+  override def put(res: Resource): Resource = {
+    // check if this resource exists in our cached listing, if not, we'll create it and update our cache
+    cachedListing.get(res.contentHash) match {
+      case Some(r) => r
+      case None => {
+        val meta = new ObjectMetadata()
+        meta.setContentLength(res.contentLength)
+        val key = objectName(res.filename, res.contentHash)
+        s3client.putObject(bucketName, key, res.inputStream, meta)
+        val s3Resource = new S3Resource(res.filename, res.contentHash, res.contentLength, protocol, bucketName, key, s3client)
+        cachedListing.put(res.contentHash, s3Resource)
+        logger.info(s"Uploaded $res (${res.contentLength / 1024} Kb) to s3://$bucketName/$key}")
+        s3Resource
+      }
+    }
   }
 
-  def apply(region: String, bucketName: String, pathPrefix: String): S3Repository = S3Repository(SerializableCredentialsProvider[EnvironmentVariableCredentialsProvider], region, bucketName, pathPrefix)
-
-  def apply(bucketName: String, pathPrefix: String = ".jar-cache"): S3Repository = {
-    S3Repository(SerializableCredentialsProvider[EnvironmentVariableCredentialsProvider], SerializableRegionProvider[AwsEnvVarOverrideRegionProvider], bucketName, pathPrefix)
-  }
-
-}
-
-
-trait SerializableCredentialsProvider extends AWSCredentialsProvider with Serializable
-object SerializableCredentialsProvider {
-  def apply[T <: AWSCredentialsProvider](implicit ct: ClassTag[T]): SerializableCredentialsProvider = new SerializableCredentialsProvider {
-    @transient private lazy val instance = ct.runtimeClass.newInstance().asInstanceOf[AWSCredentialsProvider]
-    override def refresh(): Unit = instance.refresh()
-    override def getCredentials: AWSCredentials = instance.getCredentials
-  }
-}
-
-trait SerializableRegionProvider extends AwsRegionProvider with Serializable
-object SerializableRegionProvider {
-  def apply[T <: AwsRegionProvider](implicit ct: ClassTag[T]): SerializableRegionProvider = new SerializableRegionProvider {
-    @transient private lazy val instance = ct.runtimeClass.newInstance().asInstanceOf[AwsRegionProvider]
-    override def getRegion: String = instance.getRegion
-  }
 }

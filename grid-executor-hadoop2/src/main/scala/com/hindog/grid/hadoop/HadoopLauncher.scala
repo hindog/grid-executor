@@ -3,6 +3,7 @@ package com.hindog.grid.hadoop
 import com.hindog.grid.{ClasspathUtils, GridConfig}
 import com.hindog.grid.launch.RemoteLauncher
 import com.hindog.grid.launch.RemoteLauncher.Argument
+import com.hindog.grid.repo.Resource
 import org.apache.hadoop.conf.Configuration
 
 import scala.collection.Seq
@@ -45,12 +46,13 @@ trait HadoopLauncher extends RemoteLauncher[Configuration] {
 
     val envConf = HadoopEnvironment.loadConfiguration()
     val defaultHadoopClasspath = HadoopEnvironment.classpath
-    val fullClasspath = (defaultHadoopClasspath ++ ClasspathUtils.listCurrentClasspath).map(url => Paths.get(url.toURI))
-
+    val fullClasspath = (defaultHadoopClasspath ++ ClasspathUtils.listCurrentClasspath).map(Resource.url)
+    val clusterClasspath = buildClusterClasspath(fullClasspath)
     val conf = configure(args, envConf)
 
+
     if (clusterClasspath.nonEmpty && conf.get("tmpjars") == null) {
-      //conf.setStrings("tmpjars", clusterClasspath.map(cp => new URI(cp)).filter(uri => uri.getScheme != null && uri.getScheme != "file").map(_.toString).toSeq: _*)
+      conf.setStrings("tmpjars", clusterClasspath.map(_.uri.toString).mkString(","))
     }
 
     val ignoreConfKeys = arguments.flatMap{

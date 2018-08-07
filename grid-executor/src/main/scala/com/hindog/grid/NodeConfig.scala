@@ -2,6 +2,7 @@ package com.hindog.grid
 
 import org.gridkit.nanocloud._
 import org.gridkit.vicluster._
+import org.gridkit.vicluster.isolate.IsolateProps
 
 import scala.collection._
 
@@ -87,3 +88,37 @@ object LocalNodeConfig {
 	}
 }
 
+
+case class IsolateNodeConfig private (name: String, slots: Option[Int], config: ViNode => ViNode, startupHooks: Seq[Hook], shutdownHooks: Seq[Hook]) extends NodeConfig {
+
+	override type Repr = IsolateNodeConfig
+
+	override def create(cloud: Cloud): ViNode = {
+		val node = cloud.node(name)
+		node.x(VX.TYPE).setIsolate()
+		node
+	}
+
+	def withSharePackage(pkg: String): IsolateNodeConfig = apply(node => IsolateProps.at(node).sharePackage(pkg))
+	def withShareClass(cls: String): IsolateNodeConfig = apply(node => IsolateProps.at(node).shareClass(cls))
+	def withShareClass(cls: Class[_]): IsolateNodeConfig = apply(node => IsolateProps.at(node).shareClass(cls))
+	def withShareAll: IsolateNodeConfig = apply(node => IsolateProps.at(node).shareAll())
+	def withIsolatePackage(pkg: String): IsolateNodeConfig = apply(node => IsolateProps.at(node).isolatePackage(pkg))
+	def withIsolateClass(cls: String): IsolateNodeConfig = apply(node => IsolateProps.at(node).isolateClass(cls))
+	def withIsolateClass(cls: Class[_]): IsolateNodeConfig = apply(node => IsolateProps.at(node).isolateClass(cls))
+
+	override def withName(name: String): IsolateNodeConfig = copy(name = name)
+	override def withSlots(slots: Int): IsolateNodeConfig = copy(slots = Option(slots))
+
+	override def apply(configStmt: ViNode => Unit): IsolateNodeConfig = copy(config = node => { configStmt(config(node)); node })
+
+	def addStartupHook(hook: Hook): IsolateNodeConfig = copy(startupHooks = startupHooks :+ hook)
+	def addShutdownHook(hook: Hook): IsolateNodeConfig = copy(shutdownHooks = shutdownHooks :+ hook)
+
+}
+
+object IsolateNodeConfig {
+	def apply(name: String, startupHooks: Seq[Hook] = Seq.empty, shutdownHooks: Seq[Hook] = Seq.empty): IsolateNodeConfig = {
+		IsolateNodeConfig(name, None, identity, startupHooks, shutdownHooks)
+	}
+}

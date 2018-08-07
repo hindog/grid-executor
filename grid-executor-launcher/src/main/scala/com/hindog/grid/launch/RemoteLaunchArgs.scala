@@ -18,7 +18,7 @@ class RemoteLaunchArgs(args: Array[String], props: Properties) extends ScallopCo
   val submitCommand = opt[List[String]]("submit-command", required = false, noshort = true, descr = "Submit command", default = Option(props.getProperty("grid.submit-command")).filter(_.nonEmpty).map(c => List(c)))
   val mainClass     = opt[String]("class", required = false, descr = "Class name to launch (instance of SparkRunner)" , default = Option(props.getProperty("grid.main-class")).filter(_.nonEmpty))
   val loadDefaults  = opt[Boolean]("load-defaults", required = false, descr = "Load default conf", default = Option(props.getProperty("grid.load-defaults")).map(_.toBoolean) orElse Some(true))
-  val jarCacheRepositoryClass = opt[String]("jar-cache-repository-class", required = false, descr = "Jar cache repository implementation class to sync jars to prior to launch", default = Option(props.getProperty("grid.jar-cache-repository-class")).filter(_.nonEmpty))
+  val jarCacheRepositoryClass = opt[String]("jar-repository-class", required = false, descr = "Jar cache repository implementation class to sync jars to prior to launch", default = Option(props.getProperty("grid.jar-repository-class")).filter(_.nonEmpty))
 
   val conf          = propsLong[String]("conf", descr = "List of conf values to pass to submit command")
   val programArgs   = opt[List[String]]("args", descr = "List of arguments to pass to program")
