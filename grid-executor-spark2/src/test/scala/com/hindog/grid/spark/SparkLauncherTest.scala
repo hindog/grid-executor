@@ -29,7 +29,7 @@ class SparkLauncherTest extends WordSpecLike with Matchers with Logging {
         conf.set("spark.driver.supervise", "true")
         conf.set("spark.submit.verbose", "true")
         conf.set("spark.yarn.tags", "tag1")
-      }.withClasspath(_ => Seq.empty)
+      }.withClasspathFilter(_ => Seq.empty)
     }
 
     override def run(args: Array[String]): Unit = ???
