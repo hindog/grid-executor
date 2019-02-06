@@ -26,23 +26,6 @@ trait SparkShellSupport extends SparkLauncher {
   def shellColor: Boolean = false
   def prompt: String = "spark> "
 
-  override def configure(args: Array[String], conf: SparkConf): SparkConf = {
-
-    conf.set("spark.repl.classpath", filterClusterClasspath(ClasspathUtils.listCurrentClasspath.map(u => Resource.uri(u.toURI))).map(_.uri.toString).mkString(File.pathSeparator))
-    conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath)
-
-    if (shellColor) {
-      System.setProperty("scala.color", "true")
-      conf.append("spark.driver.extraJavaOptions", s"-Dscala.color=true")
-    }
-
-    System.setProperty("scala.repl.prompt", prompt)
-    conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"" + prompt + "\"")
-    
-    super.configure(args, conf)
-         .set("spark.submit.deployMode", "client")
-  }
-
   def initCommands(): String = {
     s"""
        | @transient val spark = ${getClass.getName.stripSuffix("$")}.createSparkSession
@@ -52,9 +35,20 @@ trait SparkShellSupport extends SparkLauncher {
   }
 
   override def run(args: Array[String]): Unit = {
+    val conf = new SparkConf(true)
 
-    val conf = configure(args, new SparkConf(loadDefaults))
-    
+    conf.set("spark.repl.classpath", ClasspathUtils.listCurrentClasspath.map(u => Resource.uri(u.toURI)).map(_.uri.toString).mkString(File.pathSeparator))
+    conf.set("spark.repl.class.outputDir", outputDir.getAbsolutePath)
+
+    if (shellColor) {
+      System.setProperty("scala.color", "true")
+      conf.append("spark.driver.extraJavaOptions", s"-Dscala.color=true")
+    }
+
+    System.setProperty("scala.repl.prompt", prompt)
+    conf.append("spark.driver.extraJavaOptions", "-Dscala.repl.prompt=\"" + prompt + "\"")
+    conf.set("spark.submit.deployMode", "client")
+
     val interpArguments = List(
       "-Yrepl-class-based",
       "-Yrepl-outdir", s"${outputDir.getAbsolutePath}",

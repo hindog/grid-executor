@@ -1,9 +1,7 @@
 package com.hindog.grid.examples.spark
 
-import com.hindog.grid.{GridConfig, RemoteNodeConfig}
-import com.hindog.grid.hadoop.HDFSRepository
+import com.hindog.grid.spark.SparkLauncher
 import com.hindog.grid.spark.shell.SparkShellSupport
-import org.apache.spark.SparkConf
 
 /*
  * NOTE: only tested on IntellJ!  Other IDE's may work in a similar fashion, but that is an exercise left to the reader.
@@ -38,12 +36,15 @@ import org.apache.spark.SparkConf
  */
 object SparkShellExample extends SparkShellSupport {
 
-  override def grid: GridConfig = super.grid
+  override protected def configureLaunch(config: SparkLauncher.Config): SparkLauncher.Config = {
+    super.configureLaunch(config).withGridConfig(_
       .withStdIn(System.in)
       .withStdOut(System.out)
       .withStdErr(System.err)
       .withStdOutEcho(false)
       .withStdErrEcho(false)
       .withEchoPrefixDisabled
+    )
+  }
 
 }

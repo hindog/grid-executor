@@ -51,7 +51,7 @@ object Resource extends Logging {
   def file(filename: String, file: File): Resource = {
     if (file.isDirectory) Resource.dir(filename, file)
     else{
-      file.inputStream() { is => new FileResource(filename, DigestUtils.sha1Hex(is), file) }
+      file.inputStream() { is => new FileResource(filename, DigestUtils.sha1Hex(is), file.toJava) }
     }
   }
 
@@ -92,7 +92,7 @@ object Resource extends Logging {
       digest = new DigestOutputStream(out, sha1)
     } yield {
       in.pipeTo(out)
-      new FileResource(filename, Hex.encodeHexString(digest.getMessageDigest.digest()), tmp)
+      new FileResource(filename, Hex.encodeHexString(digest.getMessageDigest.digest()), tmp.toJava)
     }
 
     ret.get()

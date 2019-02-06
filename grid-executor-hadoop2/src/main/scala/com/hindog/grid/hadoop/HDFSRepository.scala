@@ -43,7 +43,10 @@ case class HDFSRepository(properties: Properties) extends Repository with Loggin
   protected def path(base: Path, parts: String*): Path = parts.foldLeft(base)((acc, cur) => new Path(acc, cur))
   protected def resourcePath(filename: String, contentHash: String): Path = path(basePath, contentHash, contentHash + "-" + filename)
 
-  override def contains(resource: Resource): Boolean = fs.exists(resourcePath(resource.filename, resource.contentHash))
+  override def contains(resource: Resource): Boolean = {
+    logger.info("Checking if exists: " + resourcePath(resource.filename, resource.contentHash) + "? " + fs.exists(resourcePath(resource.filename, resource.contentHash)))
+    fs.exists(resourcePath(resource.filename, resource.contentHash))
+  }
 
   override def get(filename: String, contentHash: String): Resource = {
     val resPath = resourcePath(filename, contentHash)
@@ -52,7 +55,7 @@ case class HDFSRepository(properties: Properties) extends Repository with Loggin
 
   override def put(res: Resource): Resource = {
     val resPath = resourcePath(res.filename, res.contentHash)
-    if (fs.exists(resPath) && fs.getFileStatus(resPath).getLen == res.contentLength) {
+    if (contains(res)) {
       new HadoopResource(res.filename, res.contentHash, fs.getFileStatus(resPath).getLen, resPath, fs)
     } else {
       fs.mkdirs(resPath.getParent)

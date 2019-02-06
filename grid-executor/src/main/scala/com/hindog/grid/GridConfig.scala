@@ -52,7 +52,7 @@ case class GridConfig(name: String, nodes: Seq[NodeConfig], config: ViNode => Vi
 
 object GridConfig {
 
-	def apply(id: String): GridConfig = GridConfig(id)
+	def apply(id: String): GridConfig = GridConfig(id, Seq.empty)
 
 	def apply(id: String, nodes: NodeConfig*): GridConfig = GridConfig(id, nodes.toSeq)
 

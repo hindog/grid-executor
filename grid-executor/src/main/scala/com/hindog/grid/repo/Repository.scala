@@ -1,8 +1,11 @@
 package com.hindog.grid.repo
 
+import com.hindog.grid.repo.file.FileRepository
+
 import scala.util.control.NonFatal
 
 import java.io._
+import java.nio.file.Files
 import java.util.Properties
 
 
@@ -33,4 +36,11 @@ object Repository {
     }
   }
 
+  def localTemp(nested: Boolean = false, prefix: String = "jar-cache-"): Repository = {
+    val tmpDir = Files.createTempDirectory(prefix)
+    val props = new Properties()
+    props.put("base-path", tmpDir.toString)
+    props.put("nested", nested.toString)
+    FileRepository(props)
+  }
 }

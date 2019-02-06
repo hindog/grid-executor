@@ -1,9 +1,7 @@
 package com.hindog.grid.examples.spark
 
 import com.hindog.grid._
-import com.hindog.grid.hadoop.HDFSRepository
-import com.hindog.grid.launch.{RemoteLaunchArgs, RemoteLaunch}
-import com.hindog.grid.spark.SparkLauncher
+import com.hindog.grid.spark._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
@@ -18,11 +16,15 @@ import java.net.InetAddress
  */
 object SparkExample extends SparkLauncher with Logging {
 
+  override protected def configureLaunch(config: SparkLauncher.Config): SparkLauncher.Config = {
+    config.withGridConfig(_.withNodes(LocalNodeConfig("local")))
+  }
+
   override def run(args: Array[String]): Unit = {
   
     println("Program Args: " + args.mkString(" "))
 
-    val conf = configure(args, new SparkConf(true))
+    val conf = new SparkConf(true)
     val spark = SparkSession.builder().config(conf).getOrCreate()
     val sc = spark.sparkContext
 

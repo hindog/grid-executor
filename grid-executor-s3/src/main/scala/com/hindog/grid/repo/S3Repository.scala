@@ -25,7 +25,7 @@ case class S3Repository(properties: Properties) extends Repository with Logging 
   private val bucketName = prop[String]("bucket", throw new RepositoryException("missing required property 'bucket'!"))
   private val prefix = prop[String]("prefix", "/").stripPrefix("/")
 
-  private val cachedListing = {
+  @transient private lazy val cachedListing = {
     val listing = S3KeyIterator(s3client, bucketName, prefix)
     val resources = listing.flatMap { s =>
       val suffix = s.getKey.stripPrefix(prefix).stripPrefix("/")

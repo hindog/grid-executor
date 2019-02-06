@@ -19,32 +19,32 @@ class SparkLauncherTest extends WordSpecLike with Matchers with Logging {
   
   object TestLauncher extends SparkLauncher {
 
-    def appJar = applicationJar // expose this publicly for tests
-
-    override def configure(args: Array[String], conf: SparkConf): SparkConf = {
-      conf.set("spark.master", "yarn")
-      conf.set("spark.driver.memory", "4g")
-      conf.set("spark.driver.extraLibraryPath", "/extraPath")
-      conf.set("spark.driver.extraJavaOptions", "-Dextra.opt=true -Dextra.opt2=true")
-      conf.set("spark.driver.cores", "4")
-      conf.set("spark.driver.supervise", "true")
-      conf.set("spark.submit.verbose", "true")
-      conf.set("spark.yarn.tags", "tag1")
+    override protected def configureLaunch(config: SparkLauncher.Config): SparkLauncher.Config = {
+      config.withMainClass(classOf[SparkLauncherTest].getName).withConf { conf =>
+        conf.set("spark.master", "yarn")
+        conf.set("spark.driver.memory", "4g")
+        conf.set("spark.driver.extraLibraryPath", "/extraPath")
+        conf.set("spark.driver.extraJavaOptions", "-Dextra.opt=true -Dextra.opt2=true")
+        conf.set("spark.driver.cores", "4")
+        conf.set("spark.driver.supervise", "true")
+        conf.set("spark.submit.verbose", "true")
+        conf.set("spark.yarn.tags", "tag1")
+      }.withClasspath(_ => Seq.empty)
     }
 
-    override protected def loadDefaults: Boolean = false
-    override def grid: GridConfig = GridConfig("test")
     override def run(args: Array[String]): Unit = ???
   }
 
+  def launch = TestLauncher.createLaunchConfig(Array("arg1", "arg2"))
+
   "SparkRunner" should {
     "use conf settings for driver arguments" in {
-      val cmd = TestLauncher.buildProcess(Array("arg1", "arg2")).command().asScala
-      val appJar = TestLauncher.appJar
+      val cmd = launch.buildProcess().command().asScala
+      val appJar = launch.resolveApplicationJar
       val expected = Array(
         "spark-submit",
         "--verbose",
-        "--class", "com.hindog.grid.spark.SparkLauncherTest$TestLauncher",
+        "--class", "com.hindog.grid.spark.SparkLauncherTest",
         "--master", "yarn",
         "--driver-memory", "4g",
         "--driver-java-options", "-Dextra.opt=true -Dextra.opt2=true",

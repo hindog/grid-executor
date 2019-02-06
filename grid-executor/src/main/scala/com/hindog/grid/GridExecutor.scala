@@ -45,7 +45,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	private val cloud = CloudFactory.createCloud()
 	cloud.node("**").x(VX.TYPE).setIsolate()
 	protected val threadFactory = Executors.defaultThreadFactory()
-	protected val threadPool = Executors.newFixedThreadPool(gridConfig.nodes.size, new ThreadFactory {
+	protected val threadPool = Executors.newFixedThreadPool(Math.max(gridConfig.nodes.size, 1), new ThreadFactory {
 		override def newThread(r: Runnable): Thread = {
 			val t = threadFactory.newThread(r)
 			t.setName("grid-executor [" + gridConfig.name + "] " + t.getName)

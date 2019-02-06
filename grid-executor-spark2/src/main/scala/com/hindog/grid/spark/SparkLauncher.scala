@@ -1,14 +1,16 @@
 package com.hindog.grid
 package spark
 
-import com.hindog.grid.launch.{RemoteLaunch, RemoteLauncher}
-import com.hindog.grid.launch.RemoteLauncher.Argument
-import com.hindog.grid.repo.Resource
+import com.hindog.grid.launch._
+import com.hindog.grid.repo.{Repository, Resource}
+import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 
 import scala.collection._
+
+import java.io.File
 
 /*
  *    __   _         __
@@ -17,43 +19,19 @@ import scala.collection._
  * /_//_/_/_//_/\_,_/\___/\_, /
  *                       /___/
  *
- * TODO: forking for embedded use
  */
-abstract class SparkLauncher extends RemoteLauncher[SparkConf] { parent =>
+abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
-  override type Repr = this.type
+  override def isSubmitted: Boolean = {
+    "1" == System.getenv("SPARK_ENV_LOADED") || "true" == System.getProperty("SPARK_SUBMIT") || System.getenv("SPARK_YARN_MODE") != null || Option(System.getProperty("spark.app.id")).isDefined || "true" == System.getenv(Launcher.submitEnvFlag)
+  }
 
-  override protected def confGetOption(conf: SparkConf, key: String): Option[String] = conf.getOption(key)
-  override protected def confSetIfMissing(conf: SparkConf, key: String, value: String): SparkConf = conf.setIfMissing(key, value)
-
-  flag("--verbose",             "spark.submit.verbose")
-  arg("--class",                (instance, _) => RemoteLaunch.launchArgs.mainClass.toOption orElse Option(mainClass.stripSuffix("$")))
-  arg("--master",               "spark.master")
-  arg("--deploy-mode",          "spark.submit.deployMode")
-  arg("--properties-file",      "spark.submit.propertiesFile")
-  arg("--name",                 "spark.app.name")
-  arg("--jars",                 "spark.jars")
-  arg("--packages",             "spark.jars.packages")
-  arg("--exclude-packages",     "spark.jars.excludes")
-  arg("--files",                "spark.files")
-  arg("--driver-memory",        "spark.driver.memory")
-  arg("--driver-java-options",  "spark.driver.extraJavaOptions")
-  arg("--driver-library-path",  "spark.driver.extraLibraryPath")
-  arg("--driver-class-path",    "spark.driver.extraClassPath")
-  arg("--executor-memory",      "spark.executor.memory")
-  arg("--driver-cores",         "spark.driver.cores")
-  arg("--queue",                "spark.yarn.queue")
-  arg("--num-executors",        "spark.executor.instances")
-  arg("--archives",             "spark.yarn.dist.archives")
-  arg("--principal",            "spark.yarn.principal")
-  arg("--keytab",               "spark.yarn.keytab")
-  flag("--supervise",           "spark.driver.supervise")
-
-  protected def isSubmitted: Boolean = "true" == System.getProperty("SPARK_SUBMIT") || System.getenv("SPARK_YARN_MODE") != null || Option(System.getProperty("spark.app.id")).isDefined || "true" == System.getenv(RemoteLauncher.submitEnvFlag)
-
-  protected def shellCommand: Iterable[String] = RemoteLaunch.submitCommand(Seq("spark-submit"))
-
-  override protected def grid: GridConfig = super.grid.withInheritedSystemPropertiesFilter(_.startsWith("spark."))
+  override protected[grid] def createLaunchConfig(args: Array[String] = Array.empty): SparkLauncher.Config = {
+    configureLaunch(new SparkLauncher.Config()
+      .withMainClass(getClass.getName.stripSuffix("$"))
+      .withArgs(args)
+      .withShellCommand(Seq("spark-submit")))
+  }
 
   /**
     * Utility method to create managed SparkSession that will:
@@ -109,26 +87,92 @@ abstract class SparkLauncher extends RemoteLauncher[SparkConf] { parent =>
     }
   }
 
-  override def buildProcess(args: Array[String]): ProcessBuilder = {
-    val conf = configure(args, new SparkConf(loadDefaults))
-    val clusterClasspath = buildClusterClasspath(ClasspathUtils.listCurrentClasspath.map(Resource.url))
+}
+
+object SparkLauncher {
+
+  class Config extends Launcher.Config with Logging {
+
+    override type Conf = SparkConf
     
-    if (clusterClasspath.nonEmpty) {
-      conf.getOption("spark.master") match {
-        case Some("yarn") if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.map(_.uri).mkString(","))
-        case other if !conf.contains("spark.jars") => conf.set("spark.jars", clusterClasspath.map(_.uri).mkString(","))
+    override private[grid] var conf: Conf = new SparkConf(true)
+
+    override protected def getConfValue(key: String): Option[String] = conf.getOption(key)
+
+    flag("--verbose",             "spark.submit.verbose")
+    arg("--class",                () => Option(mainClass.stripSuffix("$")))
+    arg("--master",               "spark.master")
+    arg("--deploy-mode",          "spark.submit.deployMode")
+    arg("--properties-file",      "spark.submit.propertiesFile")
+    arg("--name",                 "spark.app.name")
+    arg("--jars",                 "spark.jars")
+    arg("--packages",             "spark.jars.packages")
+    arg("--exclude-packages",     "spark.jars.excludes")
+    arg("--files",                "spark.files")
+    arg("--driver-memory",        "spark.driver.memory")
+    arg("--driver-java-options",  "spark.driver.extraJavaOptions")
+    arg("--driver-library-path",  "spark.driver.extraLibraryPath")
+    arg("--driver-class-path",    "spark.driver.extraClassPath")
+    arg("--executor-memory",      "spark.executor.memory")
+    arg("--driver-cores",         "spark.driver.cores")
+    arg("--queue",                "spark.yarn.queue")
+    arg("--num-executors",        "spark.executor.instances")
+    arg("--archives",             "spark.yarn.dist.archives")
+    arg("--principal",            "spark.yarn.principal")
+    arg("--keytab",               "spark.yarn.keytab")
+    flag("--supervise",           "spark.driver.supervise")
+
+    override def buildProcess(): ProcessBuilder = {
+      remoteHooks.foreach(_.apply(this))
+
+      val finalConf = getConf
+
+      import scala.collection.JavaConverters._
+
+      val jdkJars = FileUtils.listFiles(new File(System.getProperty("java.home")), Array(".jar"), true).asScala.map(_.toURI.toURL.toString).toSet
+      val classpathFilter = classpathFilters.foldLeft((cp: Iterable[Resource]) => cp.filter { jar => !jdkJars.contains(jar.uri.toURL.toString) }) {
+        (acc, cur) => (cp: Iterable[Resource]) => cur(acc(cp))
       }
+
+      val filteredClasspath = classpathFilter(applicationClasspath)
+
+      val cp = repository match {
+        case Some(repo) => {
+          // filter for cluster classpath
+          val clusterClasspathFilter = clusterClasspathFilters.foldLeft(identity[Iterable[Resource]] _) {
+            (acc, cur) => (cp: Iterable[Resource]) => cur(acc(cp))
+          }
+
+          // sync local jars to repository and return the repository URLs
+          clusterClasspathFilter(filteredClasspath.map(c => repo.put(c)))
+        }
+        case None => {
+          // Yarn will add local jars to cluster automatically, but other cluster managers will not and may not work with local jars, so
+          // we log a warning if we not running Yarn here.
+          if (!finalConf.getOption("spark.master").contains("yarn")) {
+            logger.warn("Application running in 'cluster' mode and no jar repository specified. Using local jars which may not be compatible with this Spark cluster.")
+          }
+          // For local jars, we will sync to a local temporary repository because it will ensure that all filenames are unique.
+          // Otherwise, we could have issues with duplicate paths/files (eg: "scala-2.11" output folder in a multi-module build)
+          // and Spark will log an error and fail to add the duplicate path.
+          val tmp = Repository.localTemp()
+          filteredClasspath.map(c => tmp.put(c))
+        }
+      }
+
+      if (cp.nonEmpty) {
+        if (!finalConf.contains("spark.jars")) {
+          finalConf.set("spark.jars", cp.map(_.uri).mkString(","))
+        }
+      }
+
+      val ignoreConfKeys = argumentConfKeys
+
+      val cmd = (shellCommand ++ arguments.flatMap(_.apply()) ++ finalConf.getAll.filterNot(kv => ignoreConfKeys.contains(kv._1)).flatMap{ case (key, value) => Array("--conf", s"$key=$value") } ++ Seq(resolveApplicationJar)).toArray ++ args
+      new ProcessBuilder(cmd: _*)
     }
 
-    val ignoreConfKeys = arguments.flatMap{
-      case arg: Argument[_, _] => arg.confKey.toSeq
-      case _ => Seq.empty
-    }.toSet
-
-    val cmd = (shellCommand ++ arguments.flatMap(_.apply(this, conf)) ++ conf.getAll.filterNot(kv => ignoreConfKeys.contains(kv._1)).flatMap{ case (key, value) => Array("--conf", s"$key=$value") } ++ Seq(applicationJar)).toArray ++ args
-
-    new ProcessBuilder(cmd: _*)
+    override def gridConfig: GridConfig = super.gridConfig.withInheritedSystemPropertiesFilter(_.startsWith("spark."))
   }
-
 
 }
