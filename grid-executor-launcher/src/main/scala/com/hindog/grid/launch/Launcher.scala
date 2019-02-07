@@ -8,14 +8,11 @@ import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner
 import scala.collection.{mutable, Iterable, Set}
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
-
 import java.lang.management.ManagementFactory
 import java.util.concurrent.Callable
 
 trait Launcher[LC <: Launcher.Config] {
 
-  type Conf
-  
   protected def configureLaunch(config: LC): LC = config
 
   protected[grid] def createLaunchConfig(args: Array[String] = Array.empty): LC
@@ -27,10 +24,10 @@ trait Launcher[LC <: Launcher.Config] {
       Detect if we are running via submit command, if so, run as normal, otherwise invoke remote launch...
      */
     if (isSubmitted) {
-      run(args)
+      launch(args)
     } else {
       val launcher = createLaunchConfig(args) //configureLaunch(launcher)
-      
+
       val gridConfig = launcher.gridConfig
         .withInheritedSystemPropertiesFilter(_.startsWith("grid."))
         .withSystemProperty(Launcher.submitPropFlag, "true")
@@ -48,7 +45,7 @@ trait Launcher[LC <: Launcher.Config] {
 
             val env = builder.environment()
             env.put(Launcher.submitEnvFlag, "true")
-            
+
             val process = builder.inheritIO().start()
             val ret = process.waitFor()
             ret
@@ -67,7 +64,7 @@ trait Launcher[LC <: Launcher.Config] {
     }
   }
 
-  def run(args: Array[String])
+  def launch(args: Array[String]): Unit
 }
 
 object Launcher {

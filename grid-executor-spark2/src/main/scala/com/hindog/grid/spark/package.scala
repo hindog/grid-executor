@@ -2,11 +2,6 @@ package com.hindog.grid
 
 import org.apache.spark.SparkConf
 
-/**
-  * Created by Aaron Hiniker (ahiniker@atomtickets.com) 
-  * 7/20/17
-  * Copyright (c) Atom Tickets, LLC
-  */
 package object spark {
 
   implicit class SparkConfOps(c: SparkConf) {

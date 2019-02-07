@@ -4,13 +4,13 @@ package spark
 import com.hindog.grid.launch._
 import com.hindog.grid.repo.{Repository, Resource}
 import org.apache.commons.io.FileUtils
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 
-import scala.collection._
-
 import java.io.File
+
+import scala.collection._
 
 /*
  *    __   _         __
@@ -22,8 +22,14 @@ import java.io.File
  */
 abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
+  /**
+    * Will try to detect if we have been submitted via spark-submit (vs running as a
+    * regular main() application.  If yes, we will not invoke the remote launch but
+    * will instead proceed to run the job.
+    */
   override def isSubmitted: Boolean = {
-    "1" == System.getenv("SPARK_ENV_LOADED") || "true" == System.getProperty("SPARK_SUBMIT") || System.getenv("SPARK_YARN_MODE") != null || Option(System.getProperty("spark.app.id")).isDefined || "true" == System.getenv(Launcher.submitEnvFlag)
+    val stack = new Throwable().fillInStackTrace()
+    stack.getStackTrace.exists(_.getClassName.startsWith("org.apache.spark.deploy"))
   }
 
   override protected[grid] def createLaunchConfig(args: Array[String] = Array.empty): SparkLauncher.Config = {
@@ -34,13 +40,18 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
   }
 
   /**
+    * Create SparkConf.
+    */
+  protected def createSparkConf(args: Array[String], default: SparkConf): SparkConf = new SparkConf(true)
+
+  /**
     * Utility method to create managed SparkSession that will:
     *
     *   auto-detect Hive libraries and enable hive-support, if requested
     *   auto-stop any running Spark contexts
     *
     */
-  def createSparkSession(conf: SparkConf): SparkSession = {
+  protected def createSparkSession(conf: SparkConf): SparkSession = {
 
     val execUri = System.getenv("SPARK_EXECUTOR_URI")
 
@@ -59,7 +70,7 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
     val builder = SparkSession.builder.config(conf)
     if (conf.get(CATALOG_IMPLEMENTATION.key, "hive").toLowerCase == "hive") {
-      if (hiveClassesArePresent) {
+      if (SparkLauncher.hiveClassesArePresent) {
         // In the case that the property is not set at all, builder's config
         // does not have this value set to 'hive' yet. The original default
         // behavior is that when there are hive classes, we use hive catalog.
@@ -78,6 +89,39 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
   }
 
+  /**
+    * "Launch" method that replaces the standard `main` method and, depending
+    * on the launch config, will run via one of these methods:
+    *
+    * (a) remotely, on another machine
+    * (b) locally, in another process
+    * (c) locally, in same process
+    *
+    * ... and will initialize the SparkSession/SparkContext and delegate to `run`.
+    *
+    * If this class is executed via "spark-submit", then (c) will be used, otherwise,
+    * (a) or (b) will be used, depending on the launch config (LocalNodeConfig or RemoteNodeConfig).
+    */
+
+  def launch(args: Array[String]): Unit = {
+    // Create initial SparkConf and pass to [[configure]] method.
+    // SparkApp expects [[configure]] to initialize the member variable 'conf' with the SparkConf to use
+    val conf = createSparkConf(args, new SparkConf(true))
+    val spark: SparkSession = createSparkSession(conf)
+    try {
+      run(args)(spark, spark.sparkContext)
+    } finally spark.close()
+  }
+
+  /**
+    * Spark application entry-point
+    */
+  def run(args: Array[String])(implicit spark: SparkSession, sc: SparkContext): Unit
+
+}
+
+object SparkLauncher {
+
   protected def hiveClassesArePresent: Boolean = {
     try {
       Class.forName("org.apache.hadoop.hive.conf.HiveConf")
@@ -87,9 +131,6 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
     }
   }
 
-}
-
-object SparkLauncher {
 
   class Config extends Launcher.Config with Logging {
 

@@ -1,19 +1,14 @@
 package com.hindog.grid.spark
 
 import com.hindog.grid.{GridConfig, Logging}
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.SparkSession
 import org.scalatest.{Matchers, WordSpecLike}
 
 import scala.collection._
 import scala.collection.JavaConverters._
-
 import java.io.File
 
-/**
-  * Created by Aaron Hiniker (ahiniker@atomtickets.com) 
-  * 12/21/17
-  * Copyright (c) Atom Tickets, LLC
-  */
 class SparkLauncherTest extends WordSpecLike with Matchers with Logging {
   System.setProperty("grid.node", "local")
   
@@ -32,7 +27,8 @@ class SparkLauncherTest extends WordSpecLike with Matchers with Logging {
       }.withClasspathFilter(_ => Seq.empty)
     }
 
-    override def run(args: Array[String]): Unit = ???
+    override def launch(args: Array[String]): Unit = ???
+    override def run(args: Array[String])(implicit spark: SparkSession, sc: SparkContext): Unit = ???
   }
 
   def launch = TestLauncher.createLaunchConfig(Array("arg1", "arg2"))

@@ -26,25 +26,25 @@ case class HDFSRepository(properties: Properties) extends Repository with Loggin
 
   import HDFSRepository._
 
-  private val basePath = Option(properties.getProperty("base-dir")).getOrElse(defaultPath) match {
+  @transient private lazy val fs = FileSystem.get(HadoopEnvironment.loadConfiguration())
+
+  private def basePath = Option(properties.getProperty("base-dir")).getOrElse(defaultPath) match {
     case p if p.startsWith("~") => path(fs.getHomeDirectory.toUri.getPath, p.stripPrefix("~").stripPrefix("/"))
     case p if !p.startsWith("/") => path(fs.getHomeDirectory.toUri.getPath, p)
     case p => path(p)
   }
 
-  private val replication = Option(properties.getProperty("replication")).map(_.toInt).getOrElse(1)
-  private val cleanInterval = Option(properties.getProperty("clean-interval")).map(Duration.apply).getOrElse(defaultCleanInterval).toMillis
-  private val maxLastAccessAge = Option(properties.getProperty("max-last-access-age")).map(Duration.apply).getOrElse(defaultMaxLastAccessAge).toMillis
-  private val cleanupTimestampFile = path(basePath, ".last-clean-ts")
-
-  @transient private lazy val fs = FileSystem.get(HadoopEnvironment.loadConfiguration())
+  private def replication = Option(properties.getProperty("replication")).map(_.toInt).getOrElse(1)
+  private def cleanInterval = Option(properties.getProperty("clean-interval")).map(Duration.apply).getOrElse(defaultCleanInterval).toMillis
+  private def maxLastAccessAge = Option(properties.getProperty("max-last-access-age")).map(Duration.apply).getOrElse(defaultMaxLastAccessAge).toMillis
+  private def cleanupTimestampFile = path(basePath, ".last-clean-ts")
 
   protected def path(base: String, parts: String*): Path = path(new Path(base), parts: _*)
   protected def path(base: Path, parts: String*): Path = parts.foldLeft(base)((acc, cur) => new Path(acc, cur))
   protected def resourcePath(filename: String, contentHash: String): Path = path(basePath, contentHash, contentHash + "-" + filename)
 
   override def contains(resource: Resource): Boolean = {
-    logger.info("Checking if exists: " + resourcePath(resource.filename, resource.contentHash) + "? " + fs.exists(resourcePath(resource.filename, resource.contentHash)))
+    logger.debug("Checking if exists: " + resourcePath(resource.filename, resource.contentHash) + "? " + fs.exists(resourcePath(resource.filename, resource.contentHash)))
     fs.exists(resourcePath(resource.filename, resource.contentHash))
   }
 

@@ -34,7 +34,7 @@ trait SparkShellSupport extends SparkLauncher {
     """.stripMargin('|')
   }
 
-  override def run(args: Array[String]): Unit = {
+  override def launch(args: Array[String]): Unit = {
     val conf = new SparkConf(true)
 
     conf.set("spark.repl.classpath", ClasspathUtils.listCurrentClasspath.map(u => Resource.uri(u.toURI)).map(_.uri.toString).mkString(File.pathSeparator))
@@ -60,7 +60,6 @@ trait SparkShellSupport extends SparkLauncher {
     settings.processArguments(interpArguments, true)
 
     iloop.process(settings) // Repl starts and goes in loop of R.E.P.L
-
   }
 
 

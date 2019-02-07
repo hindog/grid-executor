@@ -5,10 +5,6 @@ import com.amazonaws.services.s3.model._
 
 import scala.collection._
 
-/**
-  * Copyright (c) Atom Tickets, LLC
-  * Created: 6/21/18
-  */
 object S3KeyIterator {
   def apply(client: AmazonS3, request: ListObjectsRequest): Iterator[S3ObjectSummary] = new Iterator[S3ObjectSummary] {
     private var current = client.listObjects(request)

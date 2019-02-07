@@ -33,7 +33,7 @@ object HadoopWordCount extends Job with HadoopLauncher {
     }
   }
 
-  def run(args: Array[String]): Unit = {
+  def launch(args: Array[String]): Unit = {
   
     val configuration = new Configuration
     val job = Job.getInstance(configuration,"word count")
@@ -52,7 +52,7 @@ object HadoopWordCount extends Job with HadoopLauncher {
     job.setOutputValueClass(classOf[IntWritable]);
     FileInputFormat.addInputPath(job, new Path(args(0)))
     FileOutputFormat.setOutputPath(job, new Path(args(1)))
-    System.exit(if(job.waitForCompletion(true))  0 else 1)
+    job.waitForCompletion(true)
   }
 
 }

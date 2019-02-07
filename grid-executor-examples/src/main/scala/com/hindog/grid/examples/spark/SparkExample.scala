@@ -2,7 +2,7 @@ package com.hindog.grid.examples.spark
 
 import com.hindog.grid._
 import com.hindog.grid.spark._
-import org.apache.spark.SparkConf
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.SparkSession
 
 import java.net.InetAddress
@@ -20,7 +20,7 @@ object SparkExample extends SparkLauncher with Logging {
     config.withGridConfig(_.withNodes(LocalNodeConfig("local")))
   }
 
-  override def run(args: Array[String]): Unit = {
+  override def launch(args: Array[String]): Unit = {
   
     println("Program Args: " + args.mkString(" "))
 
@@ -31,7 +31,8 @@ object SparkExample extends SparkLauncher with Logging {
     val rdd = sc.parallelize(0 to 10, 10)
     rdd.map(i => "[executor: " + InetAddress.getLocalHost.getHostName + "]: " + i).collect().foreach(println)
     sc.stop()
-    
   }
+
+  override def run(args: Array[String])(implicit spark: SparkSession, sc: SparkContext): Unit = ???
 }
 

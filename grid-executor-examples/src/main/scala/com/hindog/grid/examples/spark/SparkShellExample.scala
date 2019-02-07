@@ -2,6 +2,8 @@ package com.hindog.grid.examples.spark
 
 import com.hindog.grid.spark.SparkLauncher
 import com.hindog.grid.spark.shell.SparkShellSupport
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.SparkContext
 
 /*
  * NOTE: only tested on IntellJ!  Other IDE's may work in a similar fashion, but that is an exercise left to the reader.
@@ -47,4 +49,6 @@ object SparkShellExample extends SparkShellSupport {
     )
   }
 
+  // this will never get reached because of how SparkShellSupport is implemented
+  override def run(args: Array[String])(implicit spark: SparkSession, sc: SparkContext): Unit = ???
 }
