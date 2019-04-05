@@ -69,7 +69,7 @@ case class HDFSRepository(properties: Properties) extends Repository with Loggin
       val len = fs.getFileStatus(resPath).getLen
       require(len == res.contentLength, s"Content length mismatch for $resPath")
 
-      logger.info(s"Uploaded $res (${res.contentLength / 1024} Kb) to $resPath")
+      logger.info(s"Uploaded $res (${res.contentLength / 1024}K) to $resPath")
 
       new HadoopResource(res.filename, res.contentHash,len, resPath, fs)
     }

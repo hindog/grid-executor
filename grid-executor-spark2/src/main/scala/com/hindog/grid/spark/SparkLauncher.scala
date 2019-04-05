@@ -122,6 +122,8 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
 object SparkLauncher {
 
+  protected[grid] val log = LoggerFactory.getLogger(getClass.getName.stripSuffix("$"))
+
   protected def hiveClassesArePresent: Boolean = {
     try {
       Class.forName("org.apache.hadoop.hive.conf.HiveConf")
@@ -167,6 +169,9 @@ object SparkLauncher {
       remoteHooks.foreach(_.apply(this))
 
       val finalConf = getConf
+
+      // override any SparkConf settings that are set using system properties
+      sys.props.toList.filter(_._1.startsWith("spark.")).foreach { case (k, v) => finalConf.set(k, v) }
 
       import scala.collection.JavaConverters._
 

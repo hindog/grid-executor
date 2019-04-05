@@ -63,7 +63,7 @@ case class S3Repository(properties: Properties) extends Repository with Logging 
         s3client.putObject(bucketName, key, res.inputStream, meta)
         val s3Resource = new S3Resource(res.filename, res.contentHash, res.contentLength, protocol, bucketName, key, s3client)
         cachedListing.put(res.contentHash, s3Resource)
-        logger.info(s"Uploaded $res (${res.contentLength / 1024} Kb) to s3://$bucketName/$key}")
+        logger.info(s"Uploaded $res (${res.contentLength / 1024}K) to s3://$bucketName/$key}")
         s3Resource
       }
     }
