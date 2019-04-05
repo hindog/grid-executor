@@ -122,8 +122,6 @@ abstract class SparkLauncher extends Launcher[SparkLauncher.Config] { parent =>
 
 object SparkLauncher {
 
-  protected[grid] val log = LoggerFactory.getLogger(getClass.getName.stripSuffix("$"))
-
   protected def hiveClassesArePresent: Boolean = {
     try {
       Class.forName("org.apache.hadoop.hive.conf.HiveConf")
