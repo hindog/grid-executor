@@ -1,12 +1,11 @@
 package com.hindog.grid.spark.shell
 
 import java.io.{BufferedReader, PrintWriter}
-
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{Around, Aspect}
 
-import scala.tools.nsc.Settings
-import scala.tools.nsc.interpreter.ILoop
+import scala.tools.nsc.{interpreter, Settings}
+import scala.tools.nsc.interpreter.{ILoop, JPrintWriter}
 
 /*
  *    __   _         __         
@@ -36,5 +35,9 @@ class SparkShellAspect {
     new InterceptedILoop(in, out)
   }
 
+  @Around(value = "call(scala.tools.nsc.interpreter.ILoop.new())")
+  def interceptMain(pjp: ProceedingJoinPoint): AnyRef = {
+    new InterceptedILoop(None, new interpreter.JPrintWriter(Console.out, true))
+  }
 }
 
