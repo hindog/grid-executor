@@ -5,10 +5,12 @@ import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
 import java.util.concurrent._
 import com.hindog.grid.GridConfigurable.Keys
 import com.hindog.grid.GridExecutor.Node
+import io.github.classgraph.ClassGraph
 import org.gridkit.nanocloud.{CloudFactory, VX}
 import org.gridkit.nanocloud.telecontrol.HostControlConsole
 import org.gridkit.vicluster._
 import org.gridkit.vicluster.telecontrol.StreamCopyThread
+import org.gridkit.vicluster.ViEngine.Interceptor
 
 import scala.collection._
 import scala.concurrent.{ExecutionContext, Future => SFuture}
@@ -42,6 +44,7 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 	import scala.collection.JavaConverters._
 	import GridExecutor._
 
+
 	private val cloud = CloudFactory.createCloud()
 	cloud.node("**").x(VX.TYPE).setIsolate()
 	protected val threadFactory = Executors.defaultThreadFactory()
@@ -61,18 +64,22 @@ class GridExecutor protected (gridConfig: GridConfig) extends AbstractExecutorSe
 
 			// used to source properties for this cloud instance
 			viNode.setProp(Keys.gridIdKey, gridConfig.name)
-
+			
 			// configure node (apply grid-level config and then node-level config)
 			val instance = (gridConfig.config andThen node.config)(viNode)
 			val slots = (node.slots orElse gridConfig.slots).getOrElse(1)
 			(0 until slots).map(i => Node(instance, i + 1))
 		})
 
+		val cl = Thread.currentThread().getContextClassLoader
 		try {
+			Thread.currentThread().setContextClassLoader(ClasspathUtils.urlClassloader)
 			cloud.node("**").touch()
 			runHooks("startup", _.startupHooks)
 		} catch {
 			case NonFatal(ex) => { quietlyShutdownNow(); throw ex	}
+		} finally {
+			Thread.currentThread().setContextClassLoader(cl)
 		}
 
 		nodes

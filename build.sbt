@@ -1,27 +1,27 @@
-ghpages.settings
+enablePlugins(GhpagesPlugin)
+enablePlugins(SiteScaladocPlugin)
 
 git.remoteRepo := "git@github.com:hindog/grid-executor.git"
 
-enablePlugins(SiteScaladocPlugin)
-
 val jcloudsVersion = "2.0.1"
-val sparkVersion = "2.3.1"
-val hadoopVersion = "2.8.4"
+val sparkVersion = "2.4.4"
+val hadoopVersion = "2.8.5"
 
+ThisBuild / scalaVersion := "2.11.12"
 
 lazy val commonSettings = Seq(
 	name := "grid-executor",
 	organization := "com.hindog.grid",
-	scalaVersion := "2.11.11",
-	crossScalaVersions := Seq("2.11.11"),
+	scalaVersion := "2.11.12",
+	crossScalaVersions := Seq("2.11.12", "2.12.12"),
 	libraryDependencies ++= Seq(
 		"org.scalatest" %% "scalatest" % "3.0.3" % "test"
 	),
 	releaseCrossBuild := true,
 	releaseVersionBump := sbtrelease.Version.Bump.Bugfix,
 	releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-	javacOptions ++= Seq("-Xlint:unchecked", "-source", "1.7", "-target", "1.7"),
-	scalacOptions ++= Seq("-Xlint:_", "-target:jvm-1.7", "-feature", "-language:_"),
+	javacOptions ++= Seq("-Xlint:unchecked", "-source", "1.8", "-target", "1.8"),
+	scalacOptions ++= Seq("-Xlint:_", "-target:jvm-1.8", "-feature", "-language:_"),
 	testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF"),
 	autoAPIMappings := true,
 	publishMavenStyle := true,
@@ -59,12 +59,10 @@ lazy val commonSettings = Seq(
 		)
 )
 
-lazy val root = Project(
+lazy val `grid-executor` = Project(
 	id = "grid-executor",
 	base = file(".")
-).settings(
-	name := "root"
-).aggregate(core, awsS3, launcher, hadoop2, spark2, examples).settings(commonSettings)
+).settings(name := "root").aggregate(core, awsS3, launcher, hadoop2, spark2, examples)
 
 lazy val core = project.in(file("grid-executor")).settings(commonSettings).settings(
 		name := "grid-executor-core",
@@ -80,6 +78,7 @@ lazy val core = project.in(file("grid-executor")).settings(commonSettings).setti
 			"org.apache.xbean" % "xbean-asm5-shaded" % "4.5",
 			"org.gridkit.lab" % "nanocloud" % "0.8.16",
 			"com.github.igor-suhorukov" % "mvn-classloader" % "1.9",
+			"io.github.classgraph" % "classgraph" % "4.8.90",
 			"org.slf4j" % "slf4j-log4j12" % "1.7.25" % "test"
 		)
   )
@@ -107,9 +106,9 @@ lazy val hadoop2 = project.in(file("grid-executor-hadoop2")).settings(commonSett
 lazy val spark2 = project.in(file("grid-executor-spark2")).settings(commonSettings).settings(
     name := "grid-executor-spark2",
     libraryDependencies ++= Seq(
-			"org.aspectj" % "aspectjrt" % "1.8.9" % "provided",
-			"org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-			"org.apache.spark" %% "spark-repl" % sparkVersion % "provided"
+			"org.aspectj" % "aspectjrt" % "1.8.9",
+			"org.apache.spark" %% "spark-core" % sparkVersion,
+			"org.apache.spark" %% "spark-repl" % sparkVersion
 		)
 	).dependsOn(core, launcher)
 

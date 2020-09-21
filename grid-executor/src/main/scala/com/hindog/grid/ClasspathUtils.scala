@@ -1,8 +1,11 @@
 package com.hindog.grid
 
-import java.io.{File, FileFilter}
-import java.net.{JarURLConnection, URL, URLDecoder}
+import io.github.classgraph.ClassGraph
+import org.gridkit.vicluster.{ViEngine, ViExecutor}
+import org.gridkit.vicluster.ViEngine.Interceptor
 
+import java.io.{File, FileFilter}
+import java.net.{JarURLConnection, URL, URLClassLoader, URLDecoder}
 import scala.collection.JavaConverters._
 import scala.collection._
 
@@ -16,9 +19,16 @@ import scala.collection._
 object ClasspathUtils {
 
   def listCurrentClasspath: Array[URL] = try {
-    org.gridkit.vicluster.telecontrol.ClasspathUtils.listCurrentClasspath().asScala.toArray
+    val classpathScanner = new ClassGraph().addClassLoader(Thread.currentThread().getContextClassLoader).scan(4)
+    classpathScanner.getAllResources.asScala.map(_.getClasspathElementURL).distinct.toArray
   } catch {
-    case _: Exception => Array.empty
+    case ex: Exception =>
+      ex.printStackTrace()
+      Array.empty
+  }
+
+  def urlClassloader: URLClassLoader = {
+    new URLClassLoader(listCurrentClasspath)
   }
   
   /**
@@ -45,3 +55,5 @@ object ClasspathUtils {
     }).map(s => new File(s).toURI.toURL)
   }
 }
+
+

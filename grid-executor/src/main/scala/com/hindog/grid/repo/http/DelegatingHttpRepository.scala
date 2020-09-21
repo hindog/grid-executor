@@ -15,7 +15,9 @@ class DelegatingHttpRepository(props: Properties) extends Repository {
 
   private lazy val delegateProps = {
     val out = new Properties()
-    out.putAll(props.asScala.filter(_._1.startsWith("delegate.")).map{ case (key, value) => key.stripPrefix("delegate.") -> value }.toMap.asJava)
+    props.asScala.filter(_._1.startsWith("delegate.")).foreach {
+      case (key, value) => out.setProperty(key.stripPrefix("delegate."), value)
+    }
     out
   }
 

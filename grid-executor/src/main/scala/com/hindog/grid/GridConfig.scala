@@ -1,10 +1,14 @@
 package com.hindog.grid
 
 import com.hindog.grid.repo.Repository
-import org.gridkit.vicluster.ViNode
+import org.gridkit.vicluster.ViEngine.{IdempotentConfigBuilder, Interceptor}
+import org.gridkit.vicluster.{ViEngine, ViExecutor, ViNode}
+import org.gridkit.vicluster.telecontrol.Classpath
 
 import scala.collection._
 import scala.util.Random
+
+import java.util
 
 /*
  *    __   _         __
