@@ -1,17 +1,20 @@
-## Grid Executor ##
+## Spark and JVM Remote Execution ##
 
-This project allows for remote-execution of JVM code with the only remote dependency being password-less SSH.  
+This project essentially allows you to replicate a local JVM process on one or more remote hosts using only SSH.  You can then execute any local code on the remote hosts with full STDOUT/STDERR streaming back to the local process. 
+
+**This is extremely handy for Spark jobs, because it allows running Spark jobs from your local IDE on a remote cluster just like any other application.** 
+
 
 #### Features ####
 
-* Zero-deployment remote JVM execution
+* Zero-deployment remote JVM execution.  Automatically replicates the local classpath to the remote target(s) while also caching JAR's on the remote host for faster execution on repeated runs. 
+* Support for remote Spark/Hadoop execution from IDE for fast, iterative development and feedback (ie: `spark-submit` or `hadoop` on a hadoop gateway box, without manually uploading jars).
 * Implements `ExecutorService` to support submitting `Runnable` and/or `Callable[T]` to the grid nodes.
 * Contains hooks for Scala `Future[T]` to allow for transparent grid execution by wrapping the `GridExecutor` in a Scala `ExecutionContext`.
 * By default, the library will bind remote STDOUT/STDERR to local STDOUT/STDERR and optionally STDIN can be bound as well.
-* Support for remote Spark/Hadoop execution from IDE for fast, iterative development and feedback (ie: `spark-submit` or `hadoop` on a hadoop gateway box, without manually uploading jars).
-* Support for "IDE-pimped" `spark-shell` that gives you full power of the IDE's completion/import/copy-paste support while interacting with a shell running remotely on the cluster! (See [SparkShellExample.scala](https://github.com/hindog/grid-executor/blob/master/grid-executor-examples/src/main/scala/com/hindog/grid/examples/SparkShellExample.scala) for instructions)
 * Can be integrated with [JClouds](https://jclouds.apache.org/) to provision grids on-the-fly 
 * Open-Source, Apache 2.0 License
+* Support for "IDE-pimped" `spark-shell` that gives you full power of the IDE's completion/import/copy-paste support while interacting with a Spark shell running remotely on the cluster! (See [SparkShellExample.scala](https://github.com/hindog/grid-executor/blob/master/grid-executor-examples/src/main/scala/com/hindog/grid/examples/SparkShellExample.scala) for instructions)
 
 
 #### Import ####
@@ -19,7 +22,7 @@ This project allows for remote-execution of JVM code with the only remote depend
 Using SBT:
 
 ```
-libraryDependencies += "com.hindog.grid" %% "grid-executor-core" % "1.2.0"
+libraryDependencies += "com.hindog.grid" %% "grid-executor-core" % "2.0.7"
 ```
 
 Using Maven:
@@ -28,7 +31,7 @@ Using Maven:
 <dependency>
     <groupId>com.hindog.grid</groupId>
     <artifactId>grid-executor-core_2.11</artifactId>
-    <version>1.2.0</version>
+    <version>2.0.7</version>
 </dependency>
 ```
 
